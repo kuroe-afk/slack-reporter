@@ -376,7 +376,8 @@ def main():
                     to_email  = extract_field(text, "e-mail") or ""
                     list_type = sheet_rec["リスト"] if sheet_rec else ""
 
-                    if "Turbonomic" in list_type:
+                    # 投稿文またはスプシのリスト列でTurbonomic判定
+                    if "Turbonomic" in text or "Turbonomic" in list_type:
                         body_text = BODY_SHIRYO_TURBONOMIC.format(company=company, person=person)
                     else:
                         body_text = BODY_SHIRYO_INSTANA.format(company=company, person=person)

@@ -44,6 +44,7 @@ jobs:
           key: last-timestamp-samuraiz-${{ github.run_id }}
           restore-keys: |
             last-timestamp-samuraiz-
+          save-always: true
 
       - name: スクリプトを実行
         run: python fetch_slack_samuraiz.py
