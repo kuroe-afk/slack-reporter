@@ -293,6 +293,19 @@ def add_reaction(client, timestamp):
             print(f"  → リアクション失敗: {e.response.get('error')}")
 
 
+def post_thread_reply(client, timestamp, sheet_status, draft_status):
+    check_label = ":white_check_mark: スプシ登録済み" if sheet_status == "registered" else ":warning: スプシ未登録（要確認）"
+    draft_label = ":e-mail: Gmail下書き作成済み" if draft_status == "ok" else ":x: 下書き作成失敗"
+    text = (
+        f"{SLACK_MENTION}\n"
+        f"【スプシ照合】 {check_label}　{draft_label}"
+    )
+    try:
+        client.chat_postMessage(channel=SLACK_CHANNEL_ID, text=text, thread_ts=timestamp)
+    except SlackApiError as e:
+        print(f"  → スレッド返信失敗: {e.response.get('error')}")
+
+
 # ── メイン ──
 
 def main():
@@ -397,6 +410,7 @@ def main():
             # Slack通知
             try:
                 post_slack_notify(slack, msg, poster, sheet_status, draft_status)
+                post_thread_reply(slack, msg["タイムスタンプ"], sheet_status, draft_status)
                 add_reaction(slack, msg["タイムスタンプ"])
                 print(f"  → 処理完了: {keyword} / 下書き:{draft_status} / スプシ:{sheet_status}")
             except SlackApiError as e:
