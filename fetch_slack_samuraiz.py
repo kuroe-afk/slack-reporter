@@ -84,7 +84,7 @@ BODY_MIKOMI = """\
 
 BODY_SHIRYO_INSTANA = """\
 {company}
-{person}様
+{person}
 
 お世話になっております。
 株式会社サムライズの荘司でございます。
@@ -109,7 +109,7 @@ https://x.gd/YfnB3
 
 BODY_SHIRYO_TURBONOMIC = """\
 {company}
-{person}様
+{person}
 
 お世話になっております。
 株式会社サムライズの荘司でございます。
@@ -200,9 +200,8 @@ def extract_field(text, label):
     # Slackのリンク記法 <mailto:...|表示名> を表示名だけに変換
     val = re.sub(r'<[^>]+\|([^>]+)>', r'\1', val)
     val = re.sub(r'<[^>]+>', '', val)
-    # 「様（よみ）」など余分な部分を除去
+    # 「（よみ）」などカッコ内の読み仮名を除去（「様」は残す）
     val = re.sub(r'[　\s]*[（(].+?[）)]', '', val)
-    val = re.sub(r'\s*様\s*$', '', val)
     return val.strip()
 
 
