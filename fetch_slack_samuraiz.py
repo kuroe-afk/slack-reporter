@@ -45,11 +45,11 @@ MAIL_SHIRYO_FROM     = "samuraiz@tasukaru39.com"
 
 MAIL_APO_MIKOMI_TO   = "Mio Souji <m_souji@samuraiz.co.jp>"
 MAIL_APO_MIKOMI_CC   = (
-    "岡菜保 <okanaho@tasukaru39.com>, "
-    "岩井佐友里 <s.iwai@tasukaru39.com>, "
-    "高木沙稀 <s.takaki@tasukaru39.com>, "
-    "播磨谷なぎさ <n.harimaya@tasukaru39.com>, "
-    "黒江さとみ <kuroe@tasukaru39.com>"
+    "okanaho@tasukaru39.com, "
+    "s.iwai@tasukaru39.com, "
+    "s.takaki@tasukaru39.com, "
+    "n.harimaya@tasukaru39.com, "
+    "kuroe@tasukaru39.com"
 )
 MAIL_SHIRYO_CC       = "Mio Souji <m_souji@samuraiz.co.jp>"
 
@@ -192,19 +192,23 @@ def normalize(s):
 
 
 def extract_field(text, label):
-    """本文から「ラベル：値」を抽出する"""
+    """本文から「ラベル：値」を抽出する（全角スペース・複数スペース対応）"""
     match = re.search(rf'{label}[\s　]*[：:]\s*(.+)', text)
     if not match:
         return ""
     val = match.group(1).strip()
+    # Slackのリンク記法 <mailto:...|表示名> を表示名だけに変換
     val = re.sub(r'<[^>]+\|([^>]+)>', r'\1', val)
     val = re.sub(r'<[^>]+>', '', val)
+    # 「様（よみ）」など余分な部分を除去
+    val = re.sub(r'[　\s]*[（(].+?[）)]', '', val)
+    val = re.sub(r'\s*様\s*$', '', val)
     return val.strip()
 
 
 def check_in_sheet(records, text):
-    slack_company = normalize(extract_field(text, "会社名"))
-    slack_person  = normalize(extract_field(text, "担当者"))
+    slack_company = normalize(extract_field(text, "企業名"))
+    slack_person  = normalize(extract_field(text, "氏名"))
     for rec in records:
         if not rec["企業名"]:
             continue
@@ -368,9 +372,9 @@ def main():
                         BODY_MIKOMI.format(body=body_text)
                     )
                 elif "【資料依頼" in text:
-                    company   = extract_field(text, "会社名") or "（会社名）"
-                    person    = extract_field(text, "担当者") or "（担当者名）"
-                    to_email  = extract_field(text, "e-mail") or extract_field(text, "メール") or ""
+                    company   = extract_field(text, "企業名") or "（会社名）"
+                    person    = extract_field(text, "氏名") or "（担当者名）"
+                    to_email  = extract_field(text, "e-mail") or ""
                     list_type = sheet_rec["リスト"] if sheet_rec else ""
 
                     if "Turbonomic" in list_type:
