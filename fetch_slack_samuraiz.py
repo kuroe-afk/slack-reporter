@@ -407,14 +407,13 @@ def main():
                 print(f"  → 下書き作成失敗: {e}")
                 draft_status = "error"
 
-            # Slack通知
+            # スレッド返信とリアクション
             try:
-                post_slack_notify(slack, msg, poster, sheet_status, draft_status)
                 post_thread_reply(slack, msg["タイムスタンプ"], sheet_status, draft_status)
                 add_reaction(slack, msg["タイムスタンプ"])
                 print(f"  → 処理完了: {keyword} / 下書き:{draft_status} / スプシ:{sheet_status}")
             except SlackApiError as e:
-                print(f"  → Slack通知失敗: {e.response.get('error')}")
+                print(f"  → スレッド返信失敗: {e.response.get('error')}")
 
         print("\n完了！")
 
