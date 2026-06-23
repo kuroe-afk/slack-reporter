@@ -161,8 +161,8 @@ def load_sheet(ss, sheet_name):
     records = []
     for row in rows[1:]:
         records.append({
-            "会社名": row[0].strip() if len(row) > 0 else "",
-            "氏名":   row[1].strip() if len(row) > 1 else "",
+            "会社名":      row[5].strip() if len(row) > 5 else "",
+            "アポ取得者":  row[2].strip() if len(row) > 2 else "",
         })
     return records
 
@@ -203,14 +203,14 @@ def extract_lastname(full_name):
     return full_name[:2] if len(full_name) >= 2 else full_name
 
 
-def check_in_sheet(records, company, person):
+def check_in_sheet(records, company, poster):
     norm_company = normalize(company)
-    norm_person  = normalize(person)
+    norm_poster  = normalize(poster)
     for rec in records:
         if not rec["会社名"]:
             continue
         if normalize(rec["会社名"]) in norm_company or norm_company in normalize(rec["会社名"]):
-            if not rec["氏名"] or normalize(rec["氏名"])[:2] in norm_person or norm_person[:2] in normalize(rec["氏名"]):
+            if not rec["アポ取得者"] or normalize(rec["アポ取得者"])[:2] in norm_poster or norm_poster[:2] in normalize(rec["アポ取得者"]):
                 return rec
     return None
 
@@ -353,7 +353,7 @@ def main():
                     appt_dt     = extract_field(text, "商談日時")
                     meeting_url = extract_field(text, "会議URL")
 
-                    sheet_rec    = check_in_sheet(apo_records, company, raw_person)
+                    sheet_rec    = check_in_sheet(apo_records, company, poster)
                     sheet_status = "registered" if sheet_rec else "unregistered"
 
                     # お客様宛Gmail下書き
