@@ -186,10 +186,12 @@ def extract_field(text, label):
 
 
 def extract_name(raw):
-    """「徳田様_トクダ様_女性」→「徳田様」のように最初の_より前を取得"""
+    """「徳田様_トクダ様_女性」→「徳田 様」のように最初の_より前を取得"""
     name = raw.split('_')[0].strip()
-    if not name.endswith('様'):
-        name = name + '様'
+    if name.endswith('様'):
+        name = name[:-1] + ' 様'
+    else:
+        name = name + ' 様'
     return name
 
 
