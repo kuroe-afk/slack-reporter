@@ -314,7 +314,7 @@ def main():
     print("スプレッドシートを読み込み中...")
     try:
         ss          = open_spreadsheet()
-        apo_records = load_sheet(ss, "アポイント取得")
+        apo_records = load_sheet(ss, "商談案件管理")
         print(f"  → アポ:{len(apo_records)}件")
     except Exception as e:
         print(f"スプレッドシートエラー: {e}")
