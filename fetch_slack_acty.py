@@ -278,7 +278,6 @@ def post_slack_notify_apo(client, msg, poster_name, sheet_status, body_text):
         f"お世話になっております。\n"
         f"下記、アポイント獲得のご報告でございます。\n"
         f"恐れ入りますが、ご対応のほどよろしくお願いいたします。\n"
-        f"{kakunin_note}\n"
         f"```{body_text}```"
     )
     client.chat_postMessage(channel=SLACK_NOTIFY_CHANNEL, text=text)
