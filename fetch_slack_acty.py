@@ -46,7 +46,7 @@ SLACK_MENTION_ACTY = "<@U09J3BU9RNU> <@U09VCJQ1FR9>"
 
 BODY_APO_CUSTOMER = """\
 {company}
-{person}様
+{person}
 
 平素は大変お世話になっております。
 スマートシェア株式会社の{poster_lastname}でございます。
@@ -82,7 +82,7 @@ HP:　https://www.smartshare.jp/
 
 BODY_SHIRYO_CUSTOMER = """\
 {company}
-{person}様
+{person}
 
 平素は大変お世話になっております。
 スマートシェア株式会社の{poster_lastname}でございます。
@@ -175,7 +175,11 @@ def extract_field(text, label):
     if not match:
         return ""
     val = match.group(1).strip()
+    # <https://url|表示名> → 表示名
     val = re.sub(r'<[^>]+\|([^>]+)>', r'\1', val)
+    # <https://url> → https://url（URLはそのまま残す）
+    val = re.sub(r'<(https?://[^>]+)>', r'\1', val)
+    # その他のSlackタグを除去
     val = re.sub(r'<[^>]+>', '', val)
     return val.strip()
 
@@ -189,9 +193,9 @@ def extract_name(raw):
 
 
 def extract_lastname(full_name):
-    """「佐藤匠」→「佐藤」（最初の2文字または最初の空白まで）"""
+    """「黒江さとみ」→「黒江」（スペースがあれば最初の単語、なければ最初の2文字）"""
     parts = full_name.split()
-    if parts:
+    if len(parts) > 1:
         return parts[0]
     return full_name[:2] if len(full_name) >= 2 else full_name
 
@@ -262,16 +266,19 @@ def fetch_user_name(client, user_id):
 
 
 def post_slack_notify_apo(client, msg, poster_name, sheet_status, body_text):
-    check_label = "✅ スプシ登録済み" if sheet_status == "registered" else "⚠️ スプシ未登録（要確認）"
+    check_label  = "✅ スプシ登録済み" if sheet_status == "registered" else "⚠️ スプシ未登録"
+    kakunin_note = "" if sheet_status == "registered" else "（要確認）"
     text = (
-        f"{SLACK_MENTION} {SLACK_MENTION_ACTY}\n"
-        f"お世話になっております。\n"
-        f"下記、アポイント獲得のご報告でございます。\n"
-        f"恐れ入りますが、ご対応のほどよろしくお願いいたします。\n\n"
+        f"{SLACK_MENTION}\n"
         f"【元チャンネル】 #at-acty-pro　"
         f"【投稿日時】 {msg['投稿日時']}　"
         f"【投稿者】 {poster_name}　"
-        f"【スプシ照合】 {check_label}\n"
+        f"【スプシ照合】 {check_label}\n\n"
+        f"{SLACK_MENTION_ACTY}\n"
+        f"お世話になっております。\n"
+        f"下記、アポイント獲得のご報告でございます。\n"
+        f"恐れ入りますが、ご対応のほどよろしくお願いいたします。\n"
+        f"{kakunin_note}\n"
         f"```{body_text}```"
     )
     client.chat_postMessage(channel=SLACK_NOTIFY_CHANNEL, text=text)
