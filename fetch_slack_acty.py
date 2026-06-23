@@ -6,6 +6,7 @@ import os
 import re
 import base64
 import datetime
+from zoneinfo import ZoneInfo
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
@@ -246,7 +247,7 @@ def filter_messages(messages):
         matched = [kw for kw in KEYWORDS if kw in text]
         if matched:
             filtered.append({
-                "投稿日時":           datetime.datetime.fromtimestamp(float(msg.get("ts", 0))).strftime("%Y-%m-%d %H:%M:%S"),
+                "投稿日時":           datetime.datetime.fromtimestamp(float(msg.get("ts", 0)), tz=ZoneInfo("Asia/Tokyo")).strftime("%Y-%m-%d %H:%M:%S"),
                 "投稿者ID":           msg.get("user", "不明"),
                 "本文":               text,
                 "マッチしたキーワード": "、".join(matched),
