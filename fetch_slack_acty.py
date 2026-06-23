@@ -268,15 +268,15 @@ def fetch_user_name(client, user_id):
         return user_id
 
 
-def post_slack_notify_apo(client, msg, poster_name, sheet_status, body_text):
+def post_slack_notify_apo(client, msg, poster_name, sheet_status, draft_status, body_text):
     check_label  = "✅ スプシ登録済み" if sheet_status == "registered" else "⚠️ スプシ未登録"
-    kakunin_note = "" if sheet_status == "registered" else "（要確認）"
+    draft_label  = ":e-mail: Gmail下書き作成済み" if draft_status == "ok" else ":x: 下書き作成失敗"
     text = (
         f"{SLACK_MENTION}\n"
         f"【元チャンネル】 #at-acty-pro　"
         f"【投稿日時】 {msg['投稿日時']}　"
         f"【投稿者】 {poster_name}　"
-        f"【スプシ照合】 {check_label}\n\n"
+        f"【スプシ照合】 {check_label}　{draft_label}\n\n"
         f"{SLACK_MENTION_ACTY}\n"
         f"お世話になっております。\n"
         f"下記、アポイント獲得のご報告でございます。\n"
@@ -376,7 +376,7 @@ def main():
 
                     # Slack内部報告
                     body_text = text[text.find("【アポ"):].strip()
-                    post_slack_notify_apo(slack, msg, poster, sheet_status, body_text)
+                    post_slack_notify_apo(slack, msg, poster, sheet_status, draft_status, body_text)
 
                 elif "【資料" in text:
                     company    = extract_field(text, "企業名")
