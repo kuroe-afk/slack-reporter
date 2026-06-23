@@ -36,7 +36,7 @@ FETCH_LIMIT  = 50
 LAST_TS_FILE = "last_timestamp_acty.txt"
 
 MAIL_ACTY_FROM = "ap.sales@smartshare.jp"
-MAIL_ACTY_TO_APO_CC  = "松田太一 <t.matsuda@smartshare.jp>, 冨田陽一 <y.tomita@smartshare.jp>, Sales@smartshare.jp <Sales@smartshare.jp>"
+MAIL_ACTY_TO_APO_CC  = "t.matsuda@smartshare.jp, y.tomita@smartshare.jp, Sales@smartshare.jp"
 MAIL_ACTY_BCC        = "funai@actyproism.com"
 
 SUBJECT_APO    = "【御礼/お打合せURLのご案内】スマートシェア株式会社"
