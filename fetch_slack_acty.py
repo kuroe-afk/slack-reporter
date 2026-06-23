@@ -293,7 +293,7 @@ def post_thread_reply_shiryo(client, msg, poster_name, draft_status):
         f"【元チャンネル】 #at-acty-pro　"
         f"【投稿日時】 {msg['投稿日時']}　"
         f"【投稿者】 {poster_name}\n"
-        f"{draft_label}"
+        f"【スプシ照合】 対象外　{draft_label}"
     )
     client.chat_postMessage(channel=SLACK_CHANNEL_ID, text=text, thread_ts=msg["タイムスタンプ"])
 
