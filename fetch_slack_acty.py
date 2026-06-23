@@ -286,8 +286,8 @@ def post_slack_notify_apo(client, msg, poster_name, sheet_status, body_text):
     client.chat_postMessage(channel=SLACK_NOTIFY_CHANNEL, text=text)
 
 
-def post_slack_notify_shiryo(client, msg, poster_name, draft_status):
-    draft_label = "📧 Gmail下書き作成済み" if draft_status == "ok" else "❌ 下書き作成失敗"
+def post_thread_reply_shiryo(client, msg, poster_name, draft_status):
+    draft_label = ":e-mail: Gmail下書き作成済み" if draft_status == "ok" else ":x: 下書き作成失敗"
     text = (
         f"{SLACK_MENTION}\n"
         f"【元チャンネル】 #at-acty-pro　"
@@ -295,7 +295,7 @@ def post_slack_notify_shiryo(client, msg, poster_name, draft_status):
         f"【投稿者】 {poster_name}\n"
         f"{draft_label}"
     )
-    client.chat_postMessage(channel=SLACK_NOTIFY_CHANNEL, text=text)
+    client.chat_postMessage(channel=SLACK_CHANNEL_ID, text=text, thread_ts=msg["タイムスタンプ"])
 
 
 def add_reaction(client, timestamp):
@@ -401,7 +401,7 @@ def main():
                         body_customer,
                     )
 
-                    post_slack_notify_shiryo(slack, msg, poster, draft_status)
+                    post_thread_reply_shiryo(slack, msg, poster, draft_status)
 
             except Exception as e:
                 print(f"  → 処理失敗: {e}")
