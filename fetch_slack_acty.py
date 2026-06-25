@@ -345,19 +345,21 @@ def main():
             poster_lastname = extract_lastname(poster)
 
             draft_status = "ok"
-            try:
-                if "【アポ" in text:
-                    company     = extract_field(text, "会社名")
-                    raw_person  = extract_field(text, "担当者名")
-                    person      = extract_name(raw_person)
-                    to_email    = extract_field(text, "e-mail")
-                    appt_dt     = extract_field(text, "商談日時")
-                    meeting_url = extract_field(text, "会議URL")
+            sheet_status = "unregistered"
+            body_text    = ""
 
-                    sheet_rec    = check_in_sheet(apo_records, company, poster)
-                    sheet_status = "registered" if sheet_rec else "unregistered"
+            if "【アポ" in text:
+                company     = extract_field(text, "会社名")
+                raw_person  = extract_field(text, "担当者名")
+                person      = extract_name(raw_person)
+                to_email    = extract_field(text, "e-mail")
+                appt_dt     = extract_field(text, "商談日時")
+                meeting_url = extract_field(text, "会議URL")
+                sheet_rec   = check_in_sheet(apo_records, company, poster)
+                sheet_status = "registered" if sheet_rec else "unregistered"
+                body_text   = text[text.find("【アポ"):].strip()
 
-                    # お客様宛Gmail下書き
+                try:
                     body_customer = BODY_APO_CUSTOMER.format(
                         company=company,
                         person=person,
@@ -374,19 +376,19 @@ def main():
                         SUBJECT_APO,
                         body_customer,
                     )
+                except Exception as e:
+                    print(f"  → Gmail下書き失敗: {e}")
+                    draft_status = "error"
 
-                    # Slack内部報告
-                    body_text = text[text.find("【アポ"):].strip()
-                    post_slack_notify_apo(slack, msg, poster, sheet_status, draft_status, body_text)
+                post_slack_notify_apo(slack, msg, poster, sheet_status, draft_status, body_text)
 
-                elif "【資料" in text:
-                    company    = extract_field(text, "企業名")
-                    raw_person = extract_field(text, "氏名")
-                    person     = extract_name(raw_person)
-                    to_email   = extract_field(text, "e-mail")
+            elif "【資料" in text:
+                company    = extract_field(text, "企業名")
+                raw_person = extract_field(text, "氏名")
+                person     = extract_name(raw_person)
+                to_email   = extract_field(text, "e-mail")
 
-                    sheet_status = "unregistered"
-
+                try:
                     body_customer = BODY_SHIRYO_CUSTOMER.format(
                         company=company,
                         person=person,
@@ -401,12 +403,11 @@ def main():
                         SUBJECT_SHIRYO,
                         body_customer,
                     )
+                except Exception as e:
+                    print(f"  → Gmail下書き失敗: {e}")
+                    draft_status = "error"
 
-                    post_thread_reply_shiryo(slack, msg, poster, draft_status)
-
-            except Exception as e:
-                print(f"  → 処理失敗: {e}")
-                draft_status = "error"
+                post_thread_reply_shiryo(slack, msg, poster, draft_status)
 
             # リアクション
             try:
