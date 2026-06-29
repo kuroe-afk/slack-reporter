@@ -191,6 +191,14 @@ def normalize(s):
     return re.sub(r'[\s　]', '', s).lower()
 
 
+def clean_slack_text(text):
+    """Slackの<url|表示>や<url>などをシンプルなテキストに変換"""
+    text = re.sub(r'<[^>]+\|([^>]+)>', r'\1', text)
+    text = re.sub(r'<(https?://[^>]+)>', r'\1', text)
+    text = re.sub(r'<[^>]+>', '', text)
+    return text
+
+
 def extract_field(text, label):
     """本文から「ラベル：値」を抽出する（全角スペース・複数スペース対応）"""
     match = re.search(rf'{label}[\s　]*[：:]\s*(.+)', text)
@@ -364,7 +372,7 @@ def main():
             draft_status = "ok"
             try:
                 if "【アポ" in text:
-                    body_text = text[text.find("【アポ"):].strip()
+                    body_text = clean_slack_text(text[text.find("【アポ"):].strip())
                     create_draft(
                         gmail_jimucenter,
                         MAIL_APO_MIKOMI_FROM,
@@ -374,7 +382,7 @@ def main():
                         BODY_APO.format(body=body_text)
                     )
                 elif "【見込み" in text:
-                    body_text = text[text.find("【見込み"):].strip()
+                    body_text = clean_slack_text(text[text.find("【見込み"):].strip())
                     create_draft(
                         gmail_jimucenter,
                         MAIL_APO_MIKOMI_FROM,
