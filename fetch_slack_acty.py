@@ -224,13 +224,14 @@ def extract_field(text, label):
 
 
 def extract_name(raw):
-    """「徳田様_トクダ様_女性」→「徳田 様」のように最初の_より前を取得"""
-    name = raw.split('_')[0].strip()
-    if name.endswith('様'):
-        name = name[:-1] + ' 様'
-    else:
-        name = name + ' 様'
-    return name
+    """「徳田様_トクダ様_女性」「大谷　諒様(オオタニ様／30代)」→「徳田 様」「大谷　諒 様」"""
+    # カッコ内を除去
+    name = re.sub(r'[（(][^）)]*[）)]', '', raw)
+    # アンダースコア以降を除去
+    name = name.split('_')[0].strip()
+    # 末尾の様を除去してから「 様」を付ける
+    name = re.sub(r'\s*様\s*$', '', name).strip()
+    return name + ' 様'
 
 
 def extract_lastname(full_name):
