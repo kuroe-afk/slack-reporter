@@ -32,7 +32,7 @@ GMAIL_CLIENT_ID     = os.getenv("GMAIL_CLIENT_ID")
 GMAIL_CLIENT_SECRET = os.getenv("GMAIL_CLIENT_SECRET")
 REFRESH_TOKEN_ACTY  = os.getenv("GMAIL_REFRESH_TOKEN_ACTY")
 
-KEYWORDS     = ["【アポ", "【資料"]
+KEYWORDS     = ["【アポ", "【資料", "【見込み"]
 FETCH_LIMIT  = 50
 LAST_TS_FILE = "last_timestamp_acty.txt"
 
@@ -103,6 +103,44 @@ https://www.ownly.jp/lp/hashtag_seo?a0v5la7bquf89=0e0369e2b250957f20dpch00mag9d1
 
 今後、SNSマーケティングに関する情報収集を始められる際には、ぜひこちらにご連絡をいただきまして、
 改めてお打合せのご調整をさせていただけますと幸いでございます。
+
+引き続き、どうぞ宜しくお願い申し上げます。
+
+--
+「「「「「「「「「「「「「「「「「「「「
+スマートシェア株式会社 Smart Share Inc.
+〒150-0011
+東京都渋谷区東2丁目22-14ロゼ氷川3階
+Mail:　ap.sales@smartshare.jp
+HP:　https://www.smartshare.jp/
+「「「「「「「「「「「「「「「「「「「「"""
+
+
+BODY_MIKOMI_CUSTOMER = """\
+{company}
+{person}
+
+平素は大変お世話になっております。
+スマートシェア株式会社の{poster_lastname}でございます。
+
+本日はご多用の中、お電話致しました際、
+ご丁寧にご対応いただきまして、誠に有難うございました。
+
+お電話にてご紹介致しました、
+弊社サービスの概要資料を添付にて送付いたします。
+■SNSキャンペーンツール
+https://www.ownly.jp/?a0v5la7bquf89=0e0369e2b250957f20dpch00mag9d18z&uy3ubftvh0u6o8=1db997de8e8463f1cf6d0307b6d50bf6&xnfrr0ncac=30836&cc4d76fdaf5=758
+
+■＃を利用したインフルエンサーマーケティングツール
+https://www.ownly.jp/lp/hashtag_seo?a0v5la7bquf89=0e0369e2b250957f20dpch00mag9d18z&uy3ubftvh0u6o8=1db997de8e8463f1cf6d0307b6d50bf6&xnfrr0ncac=30836&cc4d76fdaf5=758
+
+ご査収くださいませ。
+
+今後、SNSマーケティングに関する情報収集を始められる際には、
+以下からお打合せのご調整をさせていただけますと幸いでございます。
+
+■スマートシェアお打ち合わせ（佐藤）
+https://timerex.net/s/ss_so/4a15c0ca
 
 引き続き、どうぞ宜しくお願い申し上げます。
 
@@ -381,6 +419,33 @@ def main():
                     draft_status = "error"
 
                 post_slack_notify_apo(slack, msg, poster, sheet_status, draft_status, body_text)
+
+            elif "【見込み" in text:
+                company    = extract_field(text, "企業名")
+                raw_person = extract_field(text, "氏名")
+                person     = extract_name(raw_person)
+                to_email   = extract_field(text, "e-mail")
+
+                try:
+                    body_customer = BODY_MIKOMI_CUSTOMER.format(
+                        company=company,
+                        person=person,
+                        poster_lastname=poster_lastname,
+                    )
+                    create_draft(
+                        gmail_acty,
+                        MAIL_ACTY_FROM,
+                        to_email,
+                        MAIL_ACTY_TO_APO_CC,
+                        MAIL_ACTY_BCC,
+                        SUBJECT_SHIRYO,
+                        body_customer,
+                    )
+                except Exception as e:
+                    print(f"  → Gmail下書き失敗: {e}")
+                    draft_status = "error"
+
+                post_thread_reply_shiryo(slack, msg, poster, draft_status)
 
             elif "【資料" in text:
                 company    = extract_field(text, "企業名")
