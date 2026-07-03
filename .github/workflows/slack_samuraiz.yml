@@ -1,9 +1,6 @@
 name: サムライズ報告取得・Gmail下書き作成
 
 on:
-  schedule:
-    # 日本時間 9:00〜21:00 の15分おき（UTC 0:00〜12:00）
-    - cron: '0,15,30,45 0-11 * * *'
   workflow_dispatch:
 
 jobs:
