@@ -422,10 +422,10 @@ def main():
                 post_slack_notify_apo(slack, msg, poster, sheet_status, draft_status, body_text)
 
             elif "【見込み" in text:
-                company    = extract_field(text, "企業名")
-                raw_person = extract_field(text, "氏名")
-                person     = extract_name(raw_person)
-                to_email   = extract_field(text, "e-mail")
+                company    = extract_field(text, "企業名") or extract_field(text, "会社名")
+                raw_person = extract_field(text, "氏名") or extract_field(text, "担当者")
+                person     = extract_name(raw_person) if raw_person else "（担当者名）"
+                to_email   = extract_field(text, "e-mail") or extract_field(text, "アドレス")
 
                 try:
                     body_customer = BODY_MIKOMI_CUSTOMER.format(
