@@ -1,6 +1,6 @@
 """
 サンゴさま / アトムチェーン本部さま
-Slackから報告を取得 → クライアント報告用チャンネルへ通知
+Slackから報告を取得 → スプシ照合 → クライアント報告用チャンネルへ通知
 """
 
 import os
@@ -10,6 +10,8 @@ from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
+import gspread
+from google.oauth2.service_account import Credentials
 
 load_dotenv()
 
@@ -17,6 +19,9 @@ SLACK_BOT_TOKEN      = os.getenv("SLACK_BOT_TOKEN")
 SLACK_CHANNEL_ID     = os.getenv("SANGO_SLACK_CHANNEL_ID")
 SLACK_NOTIFY_CHANNEL = os.getenv("SLACK_NOTIFY_CHANNEL_ID")
 SLACK_MENTION        = os.getenv("SLACK_MENTION", "")
+
+SPREADSHEET_ID   = os.getenv("SANGO_SPREADSHEET_ID")
+CREDENTIALS_FILE = "credentials.json"
 
 KEYWORDS = ["【アポ", "【見込み", "【資料"]
 
@@ -53,6 +58,78 @@ TEMPLATE_SHIRYO = (
     "恐れ入りますが、ご対応のほどよろしくお願いいたします。\n"
     "[info]{body}[/info]"
 )
+
+
+# ──────────────────────────────────────
+# スプレッドシート
+# ──────────────────────────────────────
+
+def open_spreadsheet():
+    scopes = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
+    creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=scopes)
+    gc = gspread.authorize(creds)
+    return gc.open_by_key(SPREADSHEET_ID)
+
+
+def load_apo_records(sheet):
+    """アポイント取得企業: E=企業名(4)"""
+    rows = sheet.get_all_values()
+    records = []
+    for row in rows[1:]:
+        company = row[4].strip() if len(row) > 4 else ""
+        if company:
+            records.append({"企業名": company})
+    return records
+
+
+def load_mikomi_records(sheet):
+    """見込み企業: F=社名(5)"""
+    rows = sheet.get_all_values()
+    records = []
+    for row in rows[1:]:
+        company = row[5].strip() if len(row) > 5 else ""
+        if company:
+            records.append({"企業名": company})
+    return records
+
+
+def load_shiryo_records(sheet):
+    """資料送付: E=企業名(4)"""
+    rows = sheet.get_all_values()
+    records = []
+    for row in rows[1:]:
+        company = row[4].strip() if len(row) > 4 else ""
+        if company:
+            records.append({"企業名": company})
+    return records
+
+
+def normalize(s):
+    return re.sub(r'[\s　]', '', s).lower()
+
+
+def extract_company_from_slack(text):
+    for label in ["会社名", "企業名", "社名"]:
+        match = re.search(rf'{label}[\s　]*[：:]\s*(.+)', text)
+        if match:
+            val = match.group(1).strip()
+            val = re.sub(r'<[^>]+\|([^>]+)>', r'\1', val)
+            val = re.sub(r'<[^>]+>', '', val)
+            return val.strip()
+    return ""
+
+
+def check_in_sheet(records, text):
+    slack_company = normalize(extract_company_from_slack(text))
+    if not slack_company:
+        return None
+    for rec in records:
+        sheet_company = normalize(rec["企業名"])
+        if not sheet_company:
+            continue
+        if sheet_company in slack_company or slack_company in sheet_company:
+            return rec
+    return None
 
 
 # ──────────────────────────────────────
@@ -159,15 +236,16 @@ def add_reaction(client, timestamp, emoji):
             print(f"  → リアクション失敗: {e.response.get('error')}")
 
 
-def post_to_slack(client, msg, poster_name):
+def post_to_slack(client, msg, sheet_status, poster_name):
     draft = build_draft(msg)
+    check_label = "✅ スプシ登録済み" if sheet_status == "registered" else "⚠️ スプシ未登録（要確認）"
 
     text = (
         f"{SLACK_MENTION}\n"
         f"*【元チャンネル】* #sangosama-アトムチェーン本部sama　"
         f"*【投稿日時】* {msg['投稿日時']}　"
         f"*【投稿者】* {poster_name}　"
-        f"*【スプシ照合】* :warning: スプシ未確認\n"
+        f"*【スプシ照合】* {check_label}\n"
         f"{'─' * 40}\n"
         f"{draft}"
     )
@@ -188,9 +266,27 @@ def main():
     if not SLACK_NOTIFY_CHANNEL:
         print("エラー: SLACK_NOTIFY_CHANNEL_ID が未設定です")
         return
+    if not SPREADSHEET_ID:
+        print("エラー: SANGO_SPREADSHEET_ID が未設定です")
+        return
 
     slack = WebClient(token=SLACK_BOT_TOKEN)
 
+    # スプシ読み込み
+    print("スプレッドシートを読み込み中...")
+    try:
+        ss = open_spreadsheet()
+        apo_records    = load_apo_records(ss.worksheet("アポイント取得企業"))
+        mikomi_records = load_mikomi_records(ss.worksheet("見込み企業"))
+        shiryo_records = load_shiryo_records(ss.worksheet("資料送付"))
+        print(f"  → アポイント取得企業: {len(apo_records)} 件")
+        print(f"  → 見込み企業: {len(mikomi_records)} 件")
+        print(f"  → 資料送付: {len(shiryo_records)} 件")
+    except Exception as e:
+        print(f"スプレッドシート読み込みエラー: {e}")
+        return
+
+    # Slack取得・通知
     try:
         messages = fetch_messages(slack)
         filtered = filter_messages(messages)
@@ -201,9 +297,22 @@ def main():
 
         print("\n通知チャンネルへ投稿中...")
         for msg in filtered:
+            text = msg["本文"]
+
+            if "【アポ" in text:
+                match = check_in_sheet(apo_records, text)
+            elif "【資料" in text:
+                match = check_in_sheet(shiryo_records, text)
+            elif "【見込み" in text:
+                match = check_in_sheet(mikomi_records, text)
+            else:
+                match = None
+
+            status = "registered" if match else "unregistered"
             poster_name = fetch_user_name(slack, msg["投稿者ID"])
+
             try:
-                post_to_slack(slack, msg, poster_name)
+                post_to_slack(slack, msg, status, poster_name)
                 add_reaction(slack, msg["タイムスタンプ"], "ballot_box_with_check")
             except SlackApiError as e:
                 print(f"  → 投稿失敗: {e.response.get('error')}")
