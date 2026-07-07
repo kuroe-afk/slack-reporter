@@ -7,6 +7,7 @@ import re
 import csv
 import json
 import datetime
+from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
@@ -221,7 +222,7 @@ def filter_messages(messages):
         if matched:
             filtered.append({
                 "投稿日時": datetime.datetime.fromtimestamp(
-                    float(msg.get("ts", 0))
+                    float(msg.get("ts", 0)), tz=ZoneInfo("Asia/Tokyo")
                 ).strftime("%Y-%m-%d %H:%M:%S"),
                 "投稿者ID": msg.get("user", "不明"),
                 "本文": text,
