@@ -37,6 +37,7 @@ jobs:
           key: last-timestamp-${{ github.run_id }}
           restore-keys: |
             last-timestamp-
+          save-always: true
 
       - name: スクリプトを実行
         run: python fetch_slack.py
