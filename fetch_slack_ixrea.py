@@ -189,7 +189,6 @@ def fetch_messages(client):
         last_ts = str(datetime.datetime.now(tz=ZoneInfo("Asia/Tokyo")).timestamp())
     res = client.conversations_history(channel=SLACK_CHANNEL_ID, limit=FETCH_LIMIT, oldest=last_ts)
     messages = res.get("messages", [])
-    save_last_timestamp(messages)
     print(f"  → {len(messages)} 件取得しました")
     return messages
 
@@ -282,6 +281,7 @@ def main():
 
         if not filtered:
             print("新着の対象投稿はありませんでした。")
+            save_last_timestamp(messages)
             return
 
         for msg in filtered:
@@ -320,6 +320,7 @@ def main():
             except SlackApiError as e:
                 print(f"  → スレッド返信失敗: {e.response.get('error')}")
 
+        save_last_timestamp(messages)
         print("\n完了！")
 
     except SlackApiError as e:

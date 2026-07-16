@@ -208,8 +208,6 @@ def fetch_messages(client, channel_id, limit):
         print(f"チャンネル {channel_id} から最新{limit}件を取得中（初回）...")
         response = client.conversations_history(channel=channel_id, limit=limit)
     messages = response.get("messages", [])
-    # 最新タイムスタンプを保存
-    save_last_timestamp(messages)
     print(f"  → {len(messages)} 件取得しました")
     return messages
 
@@ -353,6 +351,7 @@ def main():
 
         if not filtered:
             print("\nキーワードに一致する投稿は見つかりませんでした。")
+            save_last_timestamp(messages)
             return
 
         # ── スプシ照合 → Slack通知 ──
@@ -385,6 +384,7 @@ def main():
                 print(f"  → 投稿失敗: {e.response.get('error')}")
 
         print(f"  → 完了（スプシ登録済み: {registered} 件 ／ 未登録: {unregistered} 件）")
+        save_last_timestamp(messages)
         print("\n完了！")
 
     except SlackApiError as e:

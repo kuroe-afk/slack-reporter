@@ -172,7 +172,6 @@ def fetch_messages(client):
             channel=SLACK_CHANNEL_ID, limit=FETCH_LIMIT
         )
     messages = response.get("messages", [])
-    save_last_timestamp(messages)
     print(f"  → {len(messages)} 件取得")
     return messages
 
@@ -293,6 +292,7 @@ def main():
 
         if not filtered:
             print("キーワードに一致する投稿はありませんでした。")
+            save_last_timestamp(messages)
             return
 
         print("\n通知チャンネルへ投稿中...")
@@ -317,6 +317,7 @@ def main():
             except SlackApiError as e:
                 print(f"  → 投稿失敗: {e.response.get('error')}")
 
+        save_last_timestamp(messages)
         print("完了！")
 
     except SlackApiError as e:
