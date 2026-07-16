@@ -185,9 +185,8 @@ def save_last_timestamp(messages):
 def fetch_messages(client):
     last_ts = load_last_timestamp()
     if not last_ts:
-        # 初回は当日0時以降のみを対象にする（過去の投稿を大量処理しないための安全策）
-        today_start = datetime.datetime.now(tz=ZoneInfo("Asia/Tokyo")).replace(hour=0, minute=0, second=0, microsecond=0)
-        last_ts = str(today_start.timestamp())
+        # 初回は「今この瞬間」以降のみを対象にする（過去の投稿を一切処理しないための安全策）
+        last_ts = str(datetime.datetime.now(tz=ZoneInfo("Asia/Tokyo")).timestamp())
     res = client.conversations_history(channel=SLACK_CHANNEL_ID, limit=FETCH_LIMIT, oldest=last_ts)
     messages = res.get("messages", [])
     save_last_timestamp(messages)
