@@ -32,6 +32,8 @@ jobs:
           echo "SAMURAIZ_SPREADSHEET_ID=${{ secrets.SAMURAIZ_SPREADSHEET_ID }}" >> .env
           echo "SANGO_SLACK_CHANNEL_ID=${{ secrets.SANGO_SLACK_CHANNEL_ID }}" >> .env
           echo "SANGO_SPREADSHEET_ID=${{ secrets.SANGO_SPREADSHEET_ID }}" >> .env
+          echo "IXREA_SLACK_CHANNEL_ID=${{ secrets.IXREA_SLACK_CHANNEL_ID }}" >> .env
+          echo "IXREA_SPREADSHEET_ID=${{ secrets.IXREA_SPREADSHEET_ID }}" >> .env
           echo "GMAIL_CLIENT_ID=${{ secrets.GMAIL_CLIENT_ID }}" >> .env
           echo "GMAIL_CLIENT_SECRET=${{ secrets.GMAIL_CLIENT_SECRET }}" >> .env
           echo "GMAIL_REFRESH_TOKEN_ACTY=${{ secrets.GMAIL_REFRESH_TOKEN_ACTY }}" >> .env
@@ -49,6 +51,7 @@ jobs:
             last_timestamp_acty.txt
             last_timestamp_samuraiz.txt
             last_timestamp_sango.txt
+            last_timestamp_ixrea.txt
           key: last-timestamp-all-${{ github.run_id }}
           restore-keys: |
             last-timestamp-all-

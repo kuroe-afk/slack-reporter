@@ -13,12 +13,14 @@ import fetch_slack as reporter_generic
 import fetch_slack_acty as reporter_acty
 import fetch_slack_samuraiz as reporter_samuraiz
 import fetch_slack_sango as reporter_sango
+import fetch_slack_ixrea as reporter_ixrea
 
 CLIENTS = [
     ("汎用", reporter_generic),
     ("acty", reporter_acty),
     ("samuraiz", reporter_samuraiz),
     ("sango", reporter_sango),
+    ("ixrea", reporter_ixrea),
 ]
 
 
