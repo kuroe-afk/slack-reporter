@@ -34,11 +34,14 @@ jobs:
           echo "SANGO_SPREADSHEET_ID=${{ secrets.SANGO_SPREADSHEET_ID }}" >> .env
           echo "IXREA_SLACK_CHANNEL_ID=${{ secrets.IXREA_SLACK_CHANNEL_ID }}" >> .env
           echo "IXREA_SPREADSHEET_ID=${{ secrets.IXREA_SPREADSHEET_ID }}" >> .env
+          echo "MIRAI_SLACK_CHANNEL_ID=${{ secrets.MIRAI_SLACK_CHANNEL_ID }}" >> .env
+          echo "MIRAI_SPREADSHEET_ID=${{ secrets.MIRAI_SPREADSHEET_ID }}" >> .env
           echo "GMAIL_CLIENT_ID=${{ secrets.GMAIL_CLIENT_ID }}" >> .env
           echo "GMAIL_CLIENT_SECRET=${{ secrets.GMAIL_CLIENT_SECRET }}" >> .env
           echo "GMAIL_REFRESH_TOKEN_ACTY=${{ secrets.GMAIL_REFRESH_TOKEN_ACTY }}" >> .env
           echo "GMAIL_REFRESH_TOKEN_JIMUCENTER=${{ secrets.GMAIL_REFRESH_TOKEN_JIMUCENTER }}" >> .env
           echo "GMAIL_REFRESH_TOKEN_SAMURAIZ=${{ secrets.GMAIL_REFRESH_TOKEN_SAMURAIZ }}" >> .env
+          echo "GMAIL_REFRESH_TOKEN_MIRAI=${{ secrets.GMAIL_REFRESH_TOKEN_MIRAI }}" >> .env
 
       - name: credentials.jsonを作成
         run: echo '${{ secrets.GOOGLE_CREDENTIALS_JSON }}' > credentials.json
@@ -52,6 +55,7 @@ jobs:
             last_timestamp_samuraiz.txt
             last_timestamp_sango.txt
             last_timestamp_ixrea.txt
+            last_timestamp_mirai.txt
           key: last-timestamp-all-${{ github.run_id }}
           restore-keys: |
             last-timestamp-all-
