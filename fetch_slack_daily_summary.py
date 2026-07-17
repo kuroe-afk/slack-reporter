@@ -138,10 +138,16 @@ def smart_summary(text):
     """投稿からアクション種別と主要フィールドを抽出して1行に要約する"""
     cleaned = clean_text(text)
 
+    # クライアント名を抽出（「SKY様の」「〇〇様」などから）
+    client_name = ""
+    m = re.search(r'([^\s　。、\n]+?)様の', cleaned)
+    if m:
+        client_name = m.group(1)
+
     # アクション種別を判定
     action = ""
     if any(kw in text for kw in ["リストになります", "リストです", "追加リストに"]):
-        action = "リスト提出"
+        action = f"{client_name}リスト提出" if client_name else "リスト提出"
     elif any(kw in text for kw in ["リスト追加", "追加リスト", "追加依頼"]):
         action = "リスト追加"
     elif any(kw in text for kw in ["リスト作成", "作成依頼"]):
