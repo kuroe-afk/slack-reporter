@@ -3,6 +3,10 @@ name: 全クライアント報告取得・通知（まとめて実行）
 on:
   workflow_dispatch:
 
+concurrency:
+  group: all-clients-run
+  cancel-in-progress: false
+
 jobs:
   run:
     runs-on: ubuntu-latest
