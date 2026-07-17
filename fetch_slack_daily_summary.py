@@ -221,12 +221,13 @@ def build_summary(done_items, wip_items, pending_items, no_response_items, oldes
             for i in items
         )
 
+    in_progress = wip_items + pending_items
+
     done_section        = "\n\n✅ *対応完了*" + (fmt(done_items) if done_items else "\n　なし")
-    wip_section         = "\n\n🔨 *作成中*" + (fmt(wip_items) if wip_items else "\n　なし")
-    pending_section     = "\n\n⏳ *未完了・依頼中*" + (fmt(pending_items) if pending_items else "\n　なし")
+    pending_section     = "\n\n⏳ *対応中・依頼中*" + (fmt(in_progress) if in_progress else "\n　なし")
     no_response_section = "\n\n🔕 *反応なし*" + (fmt(no_response_items) if no_response_items else "\n　なし")
 
-    return header + done_section + wip_section + pending_section + no_response_section
+    return header + done_section + pending_section + no_response_section
 
 
 def main():
