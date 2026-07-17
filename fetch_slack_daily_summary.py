@@ -35,6 +35,12 @@ PENDING_KEYWORDS = ["依頼", "してほしい", "してください", "お願�
                     "確認お願い", "対応お願い", "作成お願い", "追加お願い",
                     "お願いできます", "可能ですか", "いただけます"]
 
+# これらのキーワードが含まれる投稿は除外（説明・共有・雑談）
+EXCLUDE_KEYWORDS = [
+    "プロンプト", "プロント", "使ってみて", "試します", "考えてもらいました",
+    "やり方", "説明", "参考に", "共有します", "共有しました",
+]
+
 
 def get_time_range():
     now = datetime.datetime.now(tz=JST)
@@ -86,6 +92,8 @@ def fetch_messages_in_range(client, channel_id, oldest, latest):
 
 
 def is_relevant(text):
+    if any(kw in text for kw in EXCLUDE_KEYWORDS):
+        return False
     return any(kw in text for kw in LIST_KEYWORDS)
 
 
