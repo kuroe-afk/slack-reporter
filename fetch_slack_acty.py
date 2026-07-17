@@ -401,7 +401,7 @@ def main():
                 meeting_url = extract_field(text, "会議URL")
                 sheet_rec   = check_in_sheet(apo_records, company, poster)
                 sheet_status = "registered" if sheet_rec else "unregistered"
-                body_text   = text[text.find("【アポ"):].strip()
+                body_text   = text[text.find("【アポ"):].strip().replace("*", "")
 
                 try:
                     body_customer = BODY_APO_CUSTOMER.format(

@@ -79,6 +79,7 @@ def clean_slack_text(text):
     text = re.sub(r'<[^>]+\|([^>]+)>', r'\1', text)
     text = re.sub(r'<(https?://[^>]+)>', r'\1', text)
     text = re.sub(r'<[^>]+>', '', text)
+    text = text.replace('*', '')
     return text
 
 

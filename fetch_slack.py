@@ -269,13 +269,18 @@ def extract_body(text, keyword):
     return text[idx:].strip()
 
 
+def strip_bold_markup(text):
+    """Slackの太字装飾(*〜*)の*を除去する"""
+    return text.replace("*", "")
+
+
 def build_chatwork_draft(msg):
     text = msg["本文"]
     if "【アポ" in text:
-        body = extract_body(text, "【アポ")
+        body = strip_bold_markup(extract_body(text, "【アポ"))
         return TEMPLATE_APO.format(body=body)
     elif "【見込み" in text:
-        body = extract_body(text, "【見込み")
+        body = strip_bold_markup(extract_body(text, "【見込み"))
         return TEMPLATE_MIKOMI.format(body=body)
     return text
 

@@ -1,5 +1,5 @@
 """
-株式会社ixreaさま
+BridgePlusさま（株式会社エフティ―グループ）
 Slackから報告を取得 → スプシ照合 → Gmail下書き作成 → スレッド返信で通知
 """
 
@@ -22,66 +22,51 @@ from googleapiclient.discovery import build
 load_dotenv()
 
 SLACK_BOT_TOKEN  = os.getenv("SLACK_BOT_TOKEN")
-SLACK_CHANNEL_ID = os.getenv("IXREA_SLACK_CHANNEL_ID")
+SLACK_CHANNEL_ID = os.getenv("BRIDGEPLUS_SLACK_CHANNEL_ID")
 SLACK_MENTION    = os.getenv("SLACK_MENTION", "")
 
-SPREADSHEET_ID   = os.getenv("IXREA_SPREADSHEET_ID")
+SPREADSHEET_ID   = os.getenv("BRIDGEPLUS_SPREADSHEET_ID")
 CREDENTIALS_FILE = "credentials.json"
 
-GMAIL_CLIENT_ID          = os.getenv("GMAIL_CLIENT_ID")
-GMAIL_CLIENT_SECRET      = os.getenv("GMAIL_CLIENT_SECRET")
-REFRESH_TOKEN_JIMUCENTER = os.getenv("GMAIL_REFRESH_TOKEN_JIMUCENTER")
+GMAIL_CLIENT_ID           = os.getenv("GMAIL_CLIENT_ID")
+GMAIL_CLIENT_SECRET       = os.getenv("GMAIL_CLIENT_SECRET")
+REFRESH_TOKEN_BRIDGEPLUS  = os.getenv("GMAIL_REFRESH_TOKEN_BRIDGEPLUS")
 
-KEYWORDS     = ["【アポ", "【見込み", "【資料"]
+KEYWORDS     = ["【アポ", "【資料"]
 FETCH_LIMIT  = 50
-LAST_TS_FILE = "last_timestamp_ixrea.txt"
+LAST_TS_FILE = "last_timestamp_bridgeplus.txt"
 
-MAIL_FROM = "tasukaru.jimucenter@gmail.com"
-MAIL_TO   = "misaki-yamato@ixrea.jp"
-MAIL_CC   = (
-    "keiri@ixrea.jp, koji-yoshida@ixrea.jp, kazunori-setoguchi@ixrea.jp, "
-    "okanaho@tasukaru39.com, s.iwai@tasukaru39.com, s.takaki@tasukaru39.com, "
-    "n.harimaya@tasukaru39.com, kuroe@tasukaru39.com"
-)
+MAIL_FROM = "itsales@san-go.co.jp"
+MAIL_TO   = "nagase_hayate@ftgroup.co.jp"
+MAIL_CC   = "sales_support@san-go.co.jp, mizushimay@san-go.co.jp, okanaho.sango@gmail.com"
 
-SUBJECT_APO    = "アポイント取得致しました【株式会社Tasukaruでございます】"
-SUBJECT_SHIRYO = "資料送付依頼でございます【株式会社Tasukaruでございます】"
-SUBJECT_MIKOMI = "アポイント見込みのご報告【株式会社Tasukaruでございます】"
+SUBJECT_APO    = "アポイント取得しました【SANGOのSVの岡です】"
+SUBJECT_SHIRYO = "資料送付依頼でございます【SANGOのSVの岡です】"
 
 BODY_APO = """\
-株式会社ixrea
-大和　様
+株式会社エフティ―グループ
+長瀬　様
 
-お世話になっております。
-アポイント獲得のご報告でございます。
-恐れ入りますが、ご対応のほどよろしくお願いいたします。
+お世話になります。
+アポイント取得しましたのでご報告させていただきます。
+よろしくお願い致します。
 
-株式会社Tasukaru　事務センター
-------------------------------------------------------------------------
+岡
+
+----------------------------------------------------------
 {body}"""
 
 BODY_SHIRYO = """\
-株式会社ixrea
-大和　様
+株式会社エフティ―グループ
+長瀬　様
 
-お世話になっております。
-下記、資料送付依頼でございます。
-よろしくお願い申し上げます。
+お世話になります。
+資料送付依頼を送らせていただきます。
+よろしくお願い致します。
 
-株式会社Tasukaru　事務センター
-------------------------------------------------------------------------
-{body}"""
+岡
 
-BODY_MIKOMI = """\
-株式会社ixrea
-大和　様
-
-お世話になっております。
-下記、アポイント見込みの報告でございます。
-恐れ入りますが、ご対応のほどよろしくお願いいたします。
-
-株式会社Tasukaru　事務センター
-------------------------------------------------------------------------
+----------------------------------------------------------
 {body}"""
 
 
@@ -90,7 +75,7 @@ BODY_MIKOMI = """\
 def get_gmail_service():
     creds = OAuthCredentials(
         token=None,
-        refresh_token=REFRESH_TOKEN_JIMUCENTER,
+        refresh_token=REFRESH_TOKEN_BRIDGEPLUS,
         client_id=GMAIL_CLIENT_ID,
         client_secret=GMAIL_CLIENT_SECRET,
         token_uri="https://oauth2.googleapis.com/token",
@@ -215,15 +200,6 @@ def filter_messages(messages, bot_user_id):
     return filtered
 
 
-def fetch_user_name(client, user_id):
-    try:
-        res     = client.users_info(user=user_id)
-        profile = res["user"]["profile"]
-        return profile.get("display_name") or profile.get("real_name") or user_id
-    except SlackApiError:
-        return user_id
-
-
 def add_reaction(client, timestamp):
     try:
         client.reactions_add(channel=SLACK_CHANNEL_ID, timestamp=timestamp, name="ballot_box_with_check")
@@ -252,10 +228,10 @@ def main():
         print("エラー: SLACK_BOT_TOKEN が未設定です")
         return
     if not SLACK_CHANNEL_ID:
-        print("エラー: IXREA_SLACK_CHANNEL_ID が未設定です")
+        print("エラー: BRIDGEPLUS_SLACK_CHANNEL_ID が未設定です")
         return
     if not SPREADSHEET_ID:
-        print("エラー: IXREA_SPREADSHEET_ID が未設定です")
+        print("エラー: BRIDGEPLUS_SPREADSHEET_ID が未設定です")
         return
 
     slack = WebClient(token=SLACK_BOT_TOKEN)
@@ -264,10 +240,9 @@ def main():
     print("スプレッドシートを読み込み中...")
     try:
         ss = open_spreadsheet()
-        apo_records    = load_sheet(ss, "アポイント取得", company_col=3, person_col=4)
-        shiryo_records = load_sheet(ss, "資料送付",     company_col=2, person_col=3)
-        mikomi_records = load_sheet(ss, "見込み企業",   company_col=4, person_col=6)
-        print(f"  → アポ:{len(apo_records)}件 / 資料:{len(shiryo_records)}件 / 見込み:{len(mikomi_records)}件")
+        apo_records    = load_sheet(ss, "アポイント", company_col=5, person_col=6)
+        shiryo_records = load_sheet(ss, "資料送付",   company_col=4, person_col=5)
+        print(f"  → アポ:{len(apo_records)}件 / 資料:{len(shiryo_records)}件")
     except Exception as e:
         print(f"スプレッドシートエラー: {e}")
         return
@@ -295,7 +270,7 @@ def main():
             keyword = msg["マッチしたキーワード"]
 
             draft_status = "ok"
-            sheet_status = "unregistered"
+            sheet_rec    = None
 
             try:
                 if "【アポ" in text:
@@ -306,16 +281,9 @@ def main():
                     sheet_rec = check_in_sheet(shiryo_records, text)
                     body_text = clean_slack_text(text[text.find("【資料"):].strip())
                     create_draft(gmail, SUBJECT_SHIRYO, BODY_SHIRYO.format(body=body_text))
-                elif "【見込み" in text:
-                    sheet_rec = check_in_sheet(mikomi_records, text)
-                    body_text = clean_slack_text(text[text.find("【見込み"):].strip())
-                    create_draft(gmail, SUBJECT_MIKOMI, BODY_MIKOMI.format(body=body_text))
-                else:
-                    sheet_rec = None
             except Exception as e:
                 print(f"  → 下書き作成失敗: {e}")
                 draft_status = "error"
-                sheet_rec = None
 
             sheet_status = "registered" if sheet_rec else "unregistered"
 
