@@ -110,6 +110,61 @@ def clean_text(text):
     return text
 
 
+def smart_summary(text):
+    """投稿からアクション種別と主要フィールドを抽出して1行に要約する"""
+    cleaned = clean_text(text)
+
+    # アクション種別を判定
+    action = ""
+    if any(kw in text for kw in ["リスト追加", "追加リスト", "追加依頼"]):
+        action = "リスト追加"
+    elif any(kw in text for kw in ["リスト作成", "作成依頼"]):
+        action = "リスト作成"
+    elif "リスト更新" in text or "リストを更" in text:
+        action = "リスト更新"
+    elif "リスト修正" in text:
+        action = "リスト修正"
+    elif "リスト確認" in text or "確認終わり" in text:
+        action = "リスト確認"
+    elif "タブ名" in text:
+        action = "リスト追加"
+    elif "CSV" in text or "重複削除" in text:
+        action = "CSV整理"
+    elif any(kw in text for kw in LIST_KEYWORDS):
+        action = "リスト関連"
+
+    # 主要フィールドを抽出
+    fields = []
+    field_patterns = [
+        (r'タブ名[：:]\s*(.+?)(?:\n|$)', 'タブ名'),
+        (r'追加タブ[：:]\s*(.+?)(?:\n|$)', '追加タブ'),
+        (r'追加行[：:]\s*(.+?)(?:\n|$)', '追加行'),
+        (r'内容[：:]\s*(.+?)(?:\n|$)', '内容'),
+        (r'件数[：:]\s*(.+?)(?:\n|$)', '件数'),
+        (r'依頼内容[：:]\s*(.+?)(?:\n|$)', '依頼内容'),
+    ]
+    for pattern, label in field_patterns:
+        m = re.search(pattern, cleaned)
+        if m:
+            val = m.group(1).strip()[:30]
+            fields.append(f"{label}：{val}")
+
+    result = action
+    if fields:
+        result += "　" + "　".join(fields)
+    elif not result:
+        # フィールドもアクションも取れない場合は先頭の意味ある行を使う
+        for line in cleaned.split('\n'):
+            line = line.strip()
+            if line and len(line) > 5 and not any(
+                ng in line for ng in ["お疲れ様", "おはようございます", "よろしく", "お願いいたします"]
+            ):
+                result = line[:60]
+                break
+
+    return result or cleaned[:60]
+
+
 def fetch_user_name(client, user_id, cache):
     if user_id in cache:
         return cache[user_id]
@@ -137,8 +192,7 @@ def build_summary(done_items, pending_items, oldest_dt, latest_dt):
     if done_items:
         for item in done_items:
             done_section += (
-                f"\n　• `#{item['channel']}` {item['time']} *{item['poster']}*\n"
-                f"　　{item['text']}"
+                f"\n　• {item['time']} {item['poster']}　{item['text']}　`#{item['channel']}`"
             )
     else:
         done_section += "\n　なし"
@@ -147,8 +201,7 @@ def build_summary(done_items, pending_items, oldest_dt, latest_dt):
     if pending_items:
         for item in pending_items:
             pending_section += (
-                f"\n　• `#{item['channel']}` {item['time']} *{item['poster']}*\n"
-                f"　　{item['text']}"
+                f"\n　• {item['time']} {item['poster']}　{item['text']}　`#{item['channel']}`"
             )
     else:
         pending_section += "\n　なし"
@@ -197,14 +250,14 @@ def main():
                 float(msg.get("ts", 0)), tz=JST
             ).strftime("%H:%M")
             poster   = fetch_user_name(client, msg.get("user", ""), user_cache)
-            cleaned  = clean_text(text)
+            summary  = smart_summary(text)
             status   = classify(text)
 
             item = {
                 "channel": ch["name"],
                 "time":    time_str,
                 "poster":  poster,
-                "text":    cleaned,
+                "text":    summary,
             }
             if status == "done":
                 done_items.append(item)
