@@ -22,16 +22,16 @@ JST = ZoneInfo("Asia/Tokyo")
 LIST_KEYWORDS = ["リスト追加", "リスト作成", "追加依頼", "作成依頼", "リストに追加",
                  "リストお願い", "リスト送", "リスト更新", "リスト修正", "リスト確認",
                  "追加リスト", "リストを作", "リストを追", "リストを更", "リストを送",
-                 "CSVの整理", "CSV整理", "重複削除"]
+                 "タブ名", "CSVの整理", "CSV整理", "重複削除"]
 
 # 完了を示すキーワード
 DONE_KEYWORDS = ["完了", "追加しました", "作成しました", "送りました", "対応済",
                  "できました", "完成", "更新しました", "修正しました", "確認しました",
-                 "架電OK", "OKです", "終わりました"]
+                 "架電OK", "OKです", "終わりました", "確認終わり"]
 
-# 未完了・依頼を示すキーワード
-PENDING_KEYWORDS = ["お願い", "依頼", "してほしい", "してください", "お願いします",
-                    "よろしく", "確認お願い", "対応お願い", "作成お願い", "追加お願い",
+# 未完了・依頼を示すキーワード（定型の結びの挨拶は除外）
+PENDING_KEYWORDS = ["依頼", "してほしい", "してください", "お願いします",
+                    "確認お願い", "対応お願い", "作成お願い", "追加お願い",
                     "お願いできます", "可能ですか", "いただけます"]
 
 
@@ -97,9 +97,8 @@ def classify(text):
     if has_pending and not has_done:
         return "pending"
     if has_done and has_pending:
-        done_idx    = min((text.find(kw) for kw in DONE_KEYWORDS if kw in text), default=9999)
-        pending_idx = min((text.find(kw) for kw in PENDING_KEYWORDS if kw in text), default=9999)
-        return "done" if done_idx > pending_idx else "pending"
+        # 両方含む場合は完了キーワードを優先（完了報告に定型句が含まれるケースが多い）
+        return "done"
     return "pending"
 
 
