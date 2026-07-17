@@ -30,6 +30,11 @@ DONE_KEYWORDS = ["完了", "追加しました", "作成しました", "送り�
                  "できました", "完成", "更新しました", "修正しました", "確認しました",
                  "架電OK", "OKです", "終わりました", "確認終わり"]
 
+# 作成中を示すキーワード
+WIP_KEYWORDS = ["確認中", "対応中", "作成中", "準備中", "進めています", "進めてい",
+                "取り組んで", "確認します", "やってみます", "対応します", "作成します",
+                "確認してみます", "やります", "対応いたします"]
+
 # 未完了・依頼を示すキーワード（定型の結びの挨拶は除外）
 PENDING_KEYWORDS = ["依頼", "してほしい", "してください", "お願いします",
                     "確認お願い", "対応お願い", "作成お願い", "追加お願い",
@@ -104,17 +109,20 @@ def is_relevant(text):
     return any(kw in text for kw in LIST_KEYWORDS)
 
 
-def classify(text):
+def classify(text, reply_count=0, is_request_ch=True):
     has_done    = any(kw in text for kw in DONE_KEYWORDS)
+    has_wip     = any(kw in text for kw in WIP_KEYWORDS)
     has_pending = any(kw in text for kw in PENDING_KEYWORDS)
 
-    if has_done and not has_pending:
+    if has_done:
         return "done"
-    if has_pending and not has_done:
-        return "pending"
-    if has_done and has_pending:
-        # 両方含む場合は完了キーワードを優先（完了報告に定型句が含まれるケースが多い）
+    if has_wip:
+        return "wip"
+    if not is_request_ch:
         return "done"
+    # 依頼チャンネルで返信なし → 反応なし
+    if reply_count == 0:
+        return "no_response"
     return "pending"
 
 
@@ -196,35 +204,29 @@ def fetch_user_name(client, user_id, cache):
     return name
 
 
-def build_summary(done_items, pending_items, oldest_dt, latest_dt):
+def build_summary(done_items, wip_items, pending_items, no_response_items, oldest_dt, latest_dt):
     header = (
         f":bar_chart: *営業リスト 日次まとめ*\n"
         f"対象：{oldest_dt.strftime('%m/%d %H:%M')} 〜 {latest_dt.strftime('%m/%d %H:%M')}\n"
         f"{'━' * 40}"
     )
 
-    if not done_items and not pending_items:
+    all_empty = not done_items and not wip_items and not pending_items and not no_response_items
+    if all_empty:
         return header + "\n\n該当する投稿はありませんでした。"
 
-    done_section = "\n\n✅ *対応完了*"
-    if done_items:
-        for item in done_items:
-            done_section += (
-                f"\n　• `#{item['channel']}` {item['time']} {item['poster']}　{item['text']}"
-            )
-    else:
-        done_section += "\n　なし"
+    def fmt(items):
+        return "".join(
+            f"\n　• `#{i['channel']}` {i['time']} {i['poster']}　{i['text']}"
+            for i in items
+        )
 
-    pending_section = "\n\n⏳ *未完了・依頼中*"
-    if pending_items:
-        for item in pending_items:
-            pending_section += (
-                f"\n　• `#{item['channel']}` {item['time']} {item['poster']}　{item['text']}"
-            )
-    else:
-        pending_section += "\n　なし"
+    done_section        = "\n\n✅ *対応完了*" + (fmt(done_items) if done_items else "\n　なし")
+    wip_section         = "\n\n🔨 *作成中*" + (fmt(wip_items) if wip_items else "\n　なし")
+    pending_section     = "\n\n⏳ *未完了・依頼中*" + (fmt(pending_items) if pending_items else "\n　なし")
+    no_response_section = "\n\n🔕 *反応なし*" + (fmt(no_response_items) if no_response_items else "\n　なし")
 
-    return header + done_section + pending_section
+    return header + done_section + wip_section + pending_section + no_response_section
 
 
 def main():
@@ -247,9 +249,11 @@ def main():
     channels = fetch_all_channels(client)
     print(f"  → {len(channels)} チャンネル")
 
-    user_cache = {}
-    done_items    = []
-    pending_items = []
+    user_cache       = {}
+    done_items        = []
+    wip_items         = []
+    pending_items     = []
+    no_response_items = []
 
     for ch in channels:
         # 監視対象外チャンネルはスキップ
@@ -257,8 +261,9 @@ def main():
             continue
 
         messages = fetch_messages_in_range(client, ch["id"], oldest_ts, latest_ts)
+        is_request_ch = any(rc in ch["name"] for rc in REQUEST_CHANNELS)
+
         for msg in messages:
-            # ボット自身の投稿・システムメッセージを除外
             if msg.get("bot_id") or msg.get("subtype"):
                 continue
             if msg.get("user") == bot_user_id:
@@ -268,33 +273,28 @@ def main():
             if not text or not is_relevant(text):
                 continue
 
-            time_str = datetime.datetime.fromtimestamp(
+            time_str    = datetime.datetime.fromtimestamp(
                 float(msg.get("ts", 0)), tz=JST
             ).strftime("%H:%M")
-            poster  = fetch_user_name(client, msg.get("user", ""), user_cache)
-            summary = smart_summary(text)
+            poster      = fetch_user_name(client, msg.get("user", ""), user_cache)
+            summary     = smart_summary(text)
+            reply_count = msg.get("reply_count", 0)
+            status      = classify(text, reply_count, is_request_ch)
 
-            # 依頼チャンネル以外はタブ名等があれば完了扱い
-            is_request_ch = any(rc in ch["name"] for rc in REQUEST_CHANNELS)
-            if is_request_ch:
-                status = classify(text)
-            else:
-                status = "done"
+            item = {"channel": ch["name"], "time": time_str, "poster": poster, "text": summary}
 
-            item = {
-                "channel": ch["name"],
-                "time":    time_str,
-                "poster":  poster,
-                "text":    summary,
-            }
             if status == "done":
                 done_items.append(item)
+            elif status == "wip":
+                wip_items.append(item)
+            elif status == "no_response":
+                no_response_items.append(item)
             else:
                 pending_items.append(item)
 
-    print(f"完了: {len(done_items)} 件 / 未完了: {len(pending_items)} 件")
+    print(f"完了: {len(done_items)} / 作成中: {len(wip_items)} / 未完了: {len(pending_items)} / 反応なし: {len(no_response_items)}")
 
-    summary_text = build_summary(done_items, pending_items, oldest_dt, latest_dt)
+    summary_text = build_summary(done_items, wip_items, pending_items, no_response_items, oldest_dt, latest_dt)
 
     try:
         client.chat_postMessage(channel=SLACK_NOTIFY_CHANNEL, text=summary_text)
