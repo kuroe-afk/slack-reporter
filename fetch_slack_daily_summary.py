@@ -35,11 +35,18 @@ PENDING_KEYWORDS = ["依頼", "してほしい", "してください", "お願�
                     "確認お願い", "対応お願い", "作成お願い", "追加お願い",
                     "お願いできます", "可能ですか", "いただけます"]
 
-# これらのキーワードが含まれる投稿は除外（説明・共有・雑談）
+# これらのキーワードが含まれる投稿は除外（説明・共有・雑談・声掛け）
 EXCLUDE_KEYWORDS = [
     "プロンプト", "プロント", "使ってみて", "試します", "考えてもらいました",
     "やり方", "説明", "参考に", "共有します", "共有しました",
+    "ご指示ください", "何かあれば", "急なものがあれば", "今から入ります",
 ]
+
+# 監視対象外チャンネル（完全スキップ）
+EXCLUDE_CHANNELS = ["クライアント報告用--下書き--"]
+
+# 依頼・相談が来るチャンネル（pending判定あり）
+REQUEST_CHANNELS = ["risuto", "sangosama-業務連絡", "リスト作成channel", "事務チームチャンネル", "事務専用チャンネル"]
 
 
 def get_time_range():
@@ -245,6 +252,10 @@ def main():
     pending_items = []
 
     for ch in channels:
+        # 監視対象外チャンネルはスキップ
+        if any(ex in ch["name"] for ex in EXCLUDE_CHANNELS):
+            continue
+
         messages = fetch_messages_in_range(client, ch["id"], oldest_ts, latest_ts)
         for msg in messages:
             # ボット自身の投稿・システムメッセージを除外
@@ -260,9 +271,15 @@ def main():
             time_str = datetime.datetime.fromtimestamp(
                 float(msg.get("ts", 0)), tz=JST
             ).strftime("%H:%M")
-            poster   = fetch_user_name(client, msg.get("user", ""), user_cache)
-            summary  = smart_summary(text)
-            status   = classify(text)
+            poster  = fetch_user_name(client, msg.get("user", ""), user_cache)
+            summary = smart_summary(text)
+
+            # 依頼チャンネル以外はタブ名等があれば完了扱い
+            is_request_ch = any(rc in ch["name"] for rc in REQUEST_CHANNELS)
+            if is_request_ch:
+                status = classify(text)
+            else:
+                status = "done"
 
             item = {
                 "channel": ch["name"],
