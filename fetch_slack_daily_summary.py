@@ -22,6 +22,7 @@ JST = ZoneInfo("Asia/Tokyo")
 LIST_KEYWORDS = ["リスト追加", "リスト作成", "追加依頼", "作成依頼", "リストに追加",
                  "リストお願い", "リスト送", "リスト更新", "リスト修正", "リスト確認",
                  "追加リスト", "リストを作", "リストを追", "リストを更", "リストを送",
+                 "リストになります", "リストです", "追加リストに",
                  "タブ名", "CSVの整理", "CSV整理", "重複削除"]
 
 # 完了を示すキーワード
@@ -116,7 +117,9 @@ def smart_summary(text):
 
     # アクション種別を判定
     action = ""
-    if any(kw in text for kw in ["リスト追加", "追加リスト", "追加依頼"]):
+    if any(kw in text for kw in ["リストになります", "リストです", "追加リストに"]):
+        action = "リスト提出"
+    elif any(kw in text for kw in ["リスト追加", "追加リスト", "追加依頼"]):
         action = "リスト追加"
     elif any(kw in text for kw in ["リスト作成", "作成依頼"]):
         action = "リスト作成"
