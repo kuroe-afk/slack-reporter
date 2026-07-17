@@ -6,6 +6,7 @@ import os
 import re
 import base64
 import datetime
+from zoneinfo import ZoneInfo
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
@@ -242,28 +243,32 @@ def save_last_timestamp(messages):
 
 def fetch_messages(client):
     last_ts = load_last_timestamp()
-    if last_ts:
-        res = client.conversations_history(channel=SLACK_CHANNEL_ID, limit=FETCH_LIMIT, oldest=last_ts)
-    else:
-        res = client.conversations_history(channel=SLACK_CHANNEL_ID, limit=FETCH_LIMIT)
+    if not last_ts:
+        # キャッシュが無い場合は「今この瞬間」以降のみを対象にする（過去の投稿を大量処理しないための安全策）
+        last_ts = str(datetime.datetime.now(tz=ZoneInfo("Asia/Tokyo")).timestamp())
+    res = client.conversations_history(channel=SLACK_CHANNEL_ID, limit=FETCH_LIMIT, oldest=last_ts)
     messages = res.get("messages", [])
     print(f"  → {len(messages)} 件取得しました")
     return messages
 
 
-def filter_messages(messages):
+def filter_messages(messages, bot_user_id):
     filtered = []
     for msg in messages:
         text    = msg.get("text", "")
         matched = [kw for kw in KEYWORDS if kw in text]
-        if matched:
-            filtered.append({
-                "投稿日時":         datetime.datetime.fromtimestamp(float(msg.get("ts", 0))).strftime("%Y-%m-%d %H:%M:%S"),
-                "投稿者ID":         msg.get("user", "不明"),
-                "本文":             text,
-                "マッチしたキーワード": "、".join(matched),
-                "タイムスタンプ":     msg.get("ts", ""),
-            })
+        if not matched:
+            continue
+        reactions = msg.get("reactions", [])
+        if any(bot_user_id in r.get("users", []) for r in reactions):
+            continue  # 既に処理済み（ボット自身のリアクションが付いている）
+        filtered.append({
+            "投稿日時":         datetime.datetime.fromtimestamp(float(msg.get("ts", 0))).strftime("%Y-%m-%d %H:%M:%S"),
+            "投稿者ID":         msg.get("user", "不明"),
+            "本文":             text,
+            "マッチしたキーワード": "、".join(matched),
+            "タイムスタンプ":     msg.get("ts", ""),
+        })
     print(f"  → キーワード一致: {len(filtered)} 件")
     return filtered
 
@@ -317,6 +322,7 @@ def post_thread_reply(client, timestamp, sheet_status, draft_status):
 
 def main():
     slack = WebClient(token=SLACK_BOT_TOKEN)
+    bot_user_id = slack.auth_test()["user_id"]
 
     # スプシ読み込み
     print("スプレッドシートを読み込み中...")
@@ -344,7 +350,7 @@ def main():
     print(f"Slackチャンネル {SLACK_CHANNEL_ID} から取得中...")
     try:
         messages = fetch_messages(slack)
-        filtered = filter_messages(messages)
+        filtered = filter_messages(messages, bot_user_id)
 
         if not filtered:
             print("新着の対象投稿はありませんでした。")

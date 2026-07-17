@@ -201,32 +201,37 @@ def save_last_timestamp(messages):
 
 def fetch_messages(client, channel_id, limit):
     last_ts = load_last_timestamp()
-    if last_ts:
-        print(f"チャンネル {channel_id} から前回以降の新着を取得中...")
-        response = client.conversations_history(channel=channel_id, limit=limit, oldest=last_ts)
+    if not last_ts:
+        # キャッシュが無い場合は「今この瞬間」以降のみを対象にする（過去の投稿を大量処理しないための安全策）
+        print(f"チャンネル {channel_id}: 前回の記録が見つからないため、これ以降の投稿のみを対象にします")
+        last_ts = str(datetime.datetime.now(tz=ZoneInfo("Asia/Tokyo")).timestamp())
     else:
-        print(f"チャンネル {channel_id} から最新{limit}件を取得中（初回）...")
-        response = client.conversations_history(channel=channel_id, limit=limit)
+        print(f"チャンネル {channel_id} から前回以降の新着を取得中...")
+    response = client.conversations_history(channel=channel_id, limit=limit, oldest=last_ts)
     messages = response.get("messages", [])
     print(f"  → {len(messages)} 件取得しました")
     return messages
 
 
-def filter_messages(messages):
+def filter_messages(messages, bot_user_id):
     filtered = []
     for msg in messages:
         text = msg.get("text", "")
         matched = [kw for kw in KEYWORDS if kw in text]
-        if matched:
-            filtered.append({
-                "投稿日時": datetime.datetime.fromtimestamp(
-                    float(msg.get("ts", 0)), tz=ZoneInfo("Asia/Tokyo")
-                ).strftime("%Y-%m-%d %H:%M:%S"),
-                "投稿者ID": msg.get("user", "不明"),
-                "本文": text,
-                "マッチしたキーワード": "、".join(matched),
-                "タイムスタンプ": msg.get("ts", ""),
-            })
+        if not matched:
+            continue
+        reactions = msg.get("reactions", [])
+        if any(bot_user_id in r.get("users", []) for r in reactions):
+            continue  # 既に処理済み（ボット自身のリアクションが付いている）
+        filtered.append({
+            "投稿日時": datetime.datetime.fromtimestamp(
+                float(msg.get("ts", 0)), tz=ZoneInfo("Asia/Tokyo")
+            ).strftime("%Y-%m-%d %H:%M:%S"),
+            "投稿者ID": msg.get("user", "不明"),
+            "本文": text,
+            "マッチしたキーワード": "、".join(matched),
+            "タイムスタンプ": msg.get("ts", ""),
+        })
     print(f"  → キーワードに一致した投稿: {len(filtered)} 件")
     return filtered
 
@@ -326,6 +331,7 @@ def main():
         return
 
     slack = WebClient(token=SLACK_BOT_TOKEN)
+    bot_user_id = slack.auth_test()["user_id"]
 
     # ── スプシ読み込み ──
     print("スプレッドシートを読み込み中...")
@@ -343,7 +349,7 @@ def main():
     try:
         source_name = fetch_channel_name(slack, SLACK_CHANNEL_ID)
         messages    = fetch_messages(slack, SLACK_CHANNEL_ID, FETCH_LIMIT)
-        filtered    = filter_messages(messages)
+        filtered    = filter_messages(messages, bot_user_id)
 
         now = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         save_json(filtered, f"output_{now}.json")
