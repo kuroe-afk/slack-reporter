@@ -192,7 +192,7 @@ def build_summary(done_items, pending_items, oldest_dt, latest_dt):
     if done_items:
         for item in done_items:
             done_section += (
-                f"\n　• {item['time']} {item['poster']}　{item['text']}　`#{item['channel']}`"
+                f"\n　• `#{item['channel']}` {item['time']} {item['poster']}　{item['text']}"
             )
     else:
         done_section += "\n　なし"
@@ -201,7 +201,7 @@ def build_summary(done_items, pending_items, oldest_dt, latest_dt):
     if pending_items:
         for item in pending_items:
             pending_section += (
-                f"\n　• {item['time']} {item['poster']}　{item['text']}　`#{item['channel']}`"
+                f"\n　• `#{item['channel']}` {item['time']} {item['poster']}　{item['text']}"
             )
     else:
         pending_section += "\n　なし"
