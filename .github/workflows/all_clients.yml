@@ -49,6 +49,12 @@ jobs:
           echo "APPLANNING_SLACK_CHANNEL_ID=${{ secrets.APPLANNING_SLACK_CHANNEL_ID }}" >> .env
           echo "APPLANNING_NOTIFY_CHANNEL_ID=${{ secrets.APPLANNING_NOTIFY_CHANNEL_ID }}" >> .env
           echo "APPLANNING_SPREADSHEET_ID=${{ secrets.APPLANNING_SPREADSHEET_ID }}" >> .env
+          echo "GMS_SLACK_CHANNEL_ID=${{ secrets.GMS_SLACK_CHANNEL_ID }}" >> .env
+          echo "GMS_NOTIFY_CHANNEL_ID=${{ secrets.GMS_NOTIFY_CHANNEL_ID }}" >> .env
+          echo "GMS_SPREADSHEET_ID=${{ secrets.GMS_SPREADSHEET_ID }}" >> .env
+          echo "NIPPONGAS_SLACK_CHANNEL_ID=${{ secrets.NIPPONGAS_SLACK_CHANNEL_ID }}" >> .env
+          echo "NIPPONGAS_NOTIFY_CHANNEL_ID=${{ secrets.NIPPONGAS_NOTIFY_CHANNEL_ID }}" >> .env
+          echo "NIPPONGAS_SPREADSHEET_ID=${{ secrets.NIPPONGAS_SPREADSHEET_ID }}" >> .env
           echo "GMAIL_CLIENT_ID=${{ secrets.GMAIL_CLIENT_ID }}" >> .env
           echo "GMAIL_CLIENT_SECRET=${{ secrets.GMAIL_CLIENT_SECRET }}" >> .env
           echo "GMAIL_REFRESH_TOKEN_ACTY=${{ secrets.GMAIL_REFRESH_TOKEN_ACTY }}" >> .env
