@@ -18,25 +18,21 @@ SLACK_NOTIFY_CHANNEL = os.getenv("DAILY_SUMMARY_CHANNEL_ID")
 
 JST = ZoneInfo("Asia/Tokyo")
 
-# リスト追加・作成依頼に関するキーワード
-KEYWORDS = [
-    "リスト追加", "リスト作成", "追加依頼", "作成依頼", "リストに追加",
-    "リストお願い", "リスト送", "リスト更新", "リスト修正", "リスト確認",
-    "追加お願い", "作成お願い", "作成して", "追加して", "リストを",
-]
+# リスト追加・作成依頼に関するキーワード（「リスト」と組み合わせで判定）
+LIST_KEYWORDS = ["リスト追加", "リスト作成", "追加依頼", "作成依頼", "リストに追加",
+                 "リストお願い", "リスト送", "リスト更新", "リスト修正", "リスト確認",
+                 "追加リスト", "リストを作", "リストを追", "リストを更", "リストを送",
+                 "CSVの整理", "CSV整理", "重複削除"]
 
 # 完了を示すキーワード
-DONE_KEYWORDS = [
-    "完了", "しました", "追加しました", "作成しました", "送りました",
-    "対応済", "できました", "完成", "更新しました", "修正しました", "確認しました"
-]
+DONE_KEYWORDS = ["完了", "追加しました", "作成しました", "送りました", "対応済",
+                 "できました", "完成", "更新しました", "修正しました", "確認しました",
+                 "架電OK", "OKです", "終わりました"]
 
 # 未完了・依頼を示すキーワード
-PENDING_KEYWORDS = [
-    "お願い", "依頼", "してほしい", "してください", "お願いします",
-    "よろしく", "確認お願い", "対応お願い", "作成お願い", "追加お願い",
-    "お願いできます", "可能ですか", "いただけます"
-]
+PENDING_KEYWORDS = ["お願い", "依頼", "してほしい", "してください", "お願いします",
+                    "よろしく", "確認お願い", "対応お願い", "作成お願い", "追加お願い",
+                    "お願いできます", "可能ですか", "いただけます"]
 
 
 def get_time_range():
@@ -44,6 +40,14 @@ def get_time_range():
     today_18 = now.replace(hour=18, minute=0, second=0, microsecond=0)
     yesterday_18 = today_18 - datetime.timedelta(days=1)
     return yesterday_18.timestamp(), today_18.timestamp()
+
+
+def fetch_bot_user_id(client):
+    try:
+        res = client.auth_test()
+        return res.get("user_id", "")
+    except SlackApiError:
+        return ""
 
 
 def fetch_all_channels(client):
@@ -81,11 +85,10 @@ def fetch_messages_in_range(client, channel_id, oldest, latest):
 
 
 def is_relevant(text):
-    return any(kw in text for kw in KEYWORDS)
+    return any(kw in text for kw in LIST_KEYWORDS)
 
 
 def classify(text):
-    """完了か未完了かを判定"""
     has_done    = any(kw in text for kw in DONE_KEYWORDS)
     has_pending = any(kw in text for kw in PENDING_KEYWORDS)
 
@@ -94,25 +97,18 @@ def classify(text):
     if has_pending and not has_done:
         return "pending"
     if has_done and has_pending:
-        # 両方含む場合は文脈で判断（完了報告が後ろにあれば完了）
         done_idx    = min((text.find(kw) for kw in DONE_KEYWORDS if kw in text), default=9999)
         pending_idx = min((text.find(kw) for kw in PENDING_KEYWORDS if kw in text), default=9999)
         return "done" if done_idx > pending_idx else "pending"
     return "pending"
 
 
-def summarize(text):
-    """投稿を1行に要約"""
+def clean_text(text):
     text = re.sub(r'<[^>]+\|([^>]+)>', r'\1', text)
     text = re.sub(r'<(https?://[^>]+)>', 'URL', text)
     text = re.sub(r'<[^>]+>', '', text)
-    text = re.sub(r'\s+', ' ', text).strip()
-    # 最初の意味ある1文を取り出す
-    for sep in ['。', '．', '\n', '！', '!']:
-        if sep in text:
-            text = text.split(sep)[0]
-            break
-    return text[:80] + ('…' if len(text) > 80 else '')
+    text = re.sub(r'[ \t]+', ' ', text).strip()
+    return text
 
 
 def fetch_user_name(client, user_id, cache):
@@ -138,19 +134,23 @@ def build_summary(done_items, pending_items, oldest_dt, latest_dt):
     if not done_items and not pending_items:
         return header + "\n\n該当する投稿はありませんでした。"
 
-    # 対応完了
     done_section = "\n\n✅ *対応完了*"
     if done_items:
         for item in done_items:
-            done_section += f"\n　• `#{item['channel']}` {item['time']} {item['poster']}：{item['summary']}"
+            done_section += (
+                f"\n　• `#{item['channel']}` {item['time']} *{item['poster']}*\n"
+                f"　　{item['text']}"
+            )
     else:
         done_section += "\n　なし"
 
-    # 未完了・依頼中
     pending_section = "\n\n⏳ *未完了・依頼中*"
     if pending_items:
         for item in pending_items:
-            pending_section += f"\n　• `#{item['channel']}` {item['time']} {item['poster']}：{item['summary']}"
+            pending_section += (
+                f"\n　• `#{item['channel']}` {item['time']} *{item['poster']}*\n"
+                f"　　{item['text']}"
+            )
     else:
         pending_section += "\n　なし"
 
@@ -166,6 +166,7 @@ def main():
         return
 
     client = WebClient(token=SLACK_BOT_TOKEN)
+    bot_user_id = fetch_bot_user_id(client)
     oldest_ts, latest_ts = get_time_range()
     oldest_dt = datetime.datetime.fromtimestamp(oldest_ts, tz=JST)
     latest_dt = datetime.datetime.fromtimestamp(latest_ts, tz=JST)
@@ -183,24 +184,28 @@ def main():
     for ch in channels:
         messages = fetch_messages_in_range(client, ch["id"], oldest_ts, latest_ts)
         for msg in messages:
-            text = msg.get("text", "")
-            if not text or msg.get("subtype"):
+            # ボット自身の投稿・システムメッセージを除外
+            if msg.get("bot_id") or msg.get("subtype"):
                 continue
-            if not is_relevant(text):
+            if msg.get("user") == bot_user_id:
+                continue
+
+            text = msg.get("text", "")
+            if not text or not is_relevant(text):
                 continue
 
             time_str = datetime.datetime.fromtimestamp(
                 float(msg.get("ts", 0)), tz=JST
             ).strftime("%H:%M")
-            poster  = fetch_user_name(client, msg.get("user", ""), user_cache)
-            summary = summarize(text)
-            status  = classify(text)
+            poster   = fetch_user_name(client, msg.get("user", ""), user_cache)
+            cleaned  = clean_text(text)
+            status   = classify(text)
 
             item = {
                 "channel": ch["name"],
                 "time":    time_str,
                 "poster":  poster,
-                "summary": summary,
+                "text":    cleaned,
             }
             if status == "done":
                 done_items.append(item)
