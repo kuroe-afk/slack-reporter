@@ -36,6 +36,9 @@ jobs:
           echo "IXREA_SPREADSHEET_ID=${{ secrets.IXREA_SPREADSHEET_ID }}" >> .env
           echo "MIRAI_SLACK_CHANNEL_ID=${{ secrets.MIRAI_SLACK_CHANNEL_ID }}" >> .env
           echo "MIRAI_SPREADSHEET_ID=${{ secrets.MIRAI_SPREADSHEET_ID }}" >> .env
+          echo "RERON_SLACK_CHANNEL_ID=${{ secrets.RERON_SLACK_CHANNEL_ID }}" >> .env
+          echo "RERON_NOTIFY_CHANNEL_ID=${{ secrets.RERON_NOTIFY_CHANNEL_ID }}" >> .env
+          echo "RERON_SPREADSHEET_ID=${{ secrets.RERON_SPREADSHEET_ID }}" >> .env
           echo "GMAIL_CLIENT_ID=${{ secrets.GMAIL_CLIENT_ID }}" >> .env
           echo "GMAIL_CLIENT_SECRET=${{ secrets.GMAIL_CLIENT_SECRET }}" >> .env
           echo "GMAIL_REFRESH_TOKEN_ACTY=${{ secrets.GMAIL_REFRESH_TOKEN_ACTY }}" >> .env
@@ -56,6 +59,7 @@ jobs:
             last_timestamp_sango.txt
             last_timestamp_ixrea.txt
             last_timestamp_mirai.txt
+            last_timestamp_reron.txt
           key: last-timestamp-all-${{ github.run_id }}
           restore-keys: |
             last-timestamp-all-
