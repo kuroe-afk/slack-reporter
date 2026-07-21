@@ -191,26 +191,25 @@ def load_last_timestamp():
     return None
 
 
-def save_last_timestamp(messages):
-    """今回処理した中で最新のタイムスタンプを保存する"""
-    if messages:
-        latest_ts = messages[0].get("ts", "")
-        with open(LAST_TS_FILE, "w") as f:
-            f.write(latest_ts)
+def save_last_timestamp(ts):
+    """今回チェックした時刻を保存する（投稿が0件でも必ず保存する）"""
+    with open(LAST_TS_FILE, "w") as f:
+        f.write(str(ts))
 
 
 def fetch_messages(client, channel_id, limit):
     last_ts = load_last_timestamp()
+    fetch_ts = datetime.datetime.now(tz=ZoneInfo("Asia/Tokyo")).timestamp()
     if not last_ts:
-        # キャッシュが無い場合は「今この瞬間」以降のみを対象にする（過去の投稿を大量処理しないための安全策）
+        # 前回の記録が無い場合は「今この瞬間」以降のみを対象にする（過去の投稿を大量処理しないための安全策）
         print(f"チャンネル {channel_id}: 前回の記録が見つからないため、これ以降の投稿のみを対象にします")
-        last_ts = str(datetime.datetime.now(tz=ZoneInfo("Asia/Tokyo")).timestamp())
+        last_ts = str(fetch_ts)
     else:
         print(f"チャンネル {channel_id} から前回以降の新着を取得中...")
     response = client.conversations_history(channel=channel_id, limit=limit, oldest=last_ts)
     messages = response.get("messages", [])
     print(f"  → {len(messages)} 件取得しました")
-    return messages
+    return messages, fetch_ts
 
 
 def filter_messages(messages, bot_user_id):
@@ -353,7 +352,7 @@ def main():
     # ── Slack取得・フィルタ ──
     try:
         source_name = fetch_channel_name(slack, SLACK_CHANNEL_ID)
-        messages    = fetch_messages(slack, SLACK_CHANNEL_ID, FETCH_LIMIT)
+        messages, fetch_ts = fetch_messages(slack, SLACK_CHANNEL_ID, FETCH_LIMIT)
         filtered    = filter_messages(messages, bot_user_id)
 
         now = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -362,7 +361,7 @@ def main():
 
         if not filtered:
             print("\nキーワードに一致する投稿は見つかりませんでした。")
-            save_last_timestamp(messages)
+            save_last_timestamp(fetch_ts)
             return
 
         # ── スプシ照合 → Slack通知 ──
@@ -395,7 +394,7 @@ def main():
                 print(f"  → 投稿失敗: {e.response.get('error')}")
 
         print(f"  → 完了（スプシ登録済み: {registered} 件 ／ 未登録: {unregistered} 件）")
-        save_last_timestamp(messages)
+        save_last_timestamp(fetch_ts)
         print("\n完了！")
 
     except SlackApiError as e:

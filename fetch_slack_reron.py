@@ -131,21 +131,22 @@ def load_last_timestamp():
     return None
 
 
-def save_last_timestamp(messages):
-    if messages:
-        with open(LAST_TS_FILE, "w") as f:
-            f.write(messages[0].get("ts", ""))
+def save_last_timestamp(ts):
+    """今回チェックした時刻を保存する（投稿が0件でも必ず保存する）"""
+    with open(LAST_TS_FILE, "w") as f:
+        f.write(str(ts))
 
 
 def fetch_messages(client):
     last_ts = load_last_timestamp()
+    fetch_ts = datetime.datetime.now(tz=ZoneInfo("Asia/Tokyo")).timestamp()
     if not last_ts:
         # 初回は「今この瞬間」以降のみを対象にする（過去の投稿を一切処理しないための安全策）
-        last_ts = str(datetime.datetime.now(tz=ZoneInfo("Asia/Tokyo")).timestamp())
+        last_ts = str(fetch_ts)
     response = client.conversations_history(channel=SLACK_CHANNEL_ID, limit=FETCH_LIMIT, oldest=last_ts)
     messages = response.get("messages", [])
     print(f"  → {len(messages)} 件取得")
-    return messages
+    return messages, fetch_ts
 
 
 def filter_messages(messages, bot_user_id):
@@ -248,12 +249,12 @@ def main():
 
     print(f"Slackチャンネル {SLACK_CHANNEL_ID} から取得中...")
     try:
-        messages = fetch_messages(slack)
+        messages, fetch_ts = fetch_messages(slack)
         filtered = filter_messages(messages, bot_user_id)
 
         if not filtered:
             print("キーワードに一致する投稿はありませんでした。")
-            save_last_timestamp(messages)
+            save_last_timestamp(fetch_ts)
             return
 
         print("\n通知チャンネルへ投稿中...")
@@ -278,7 +279,7 @@ def main():
             except SlackApiError as e:
                 print(f"  → 投稿失敗: {e.response.get('error')}")
 
-        save_last_timestamp(messages)
+        save_last_timestamp(fetch_ts)
         print("完了！")
 
     except SlackApiError as e:
