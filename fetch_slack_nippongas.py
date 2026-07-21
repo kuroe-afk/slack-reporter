@@ -230,7 +230,7 @@ def main():
     try:
         ss = open_spreadsheet()
         apo_records    = load_sheet(ss, "アポイント",     company_col=6, person_col=7)
-        shiryo_records = load_sheet(ss, "資料送付依頼",   company_col=6, person_col=7)
+        shiryo_records = load_sheet(ss, "資料送付依頼",   company_col=7, person_col=8)
         print(f"  → アポ:{len(apo_records)}件 / 資料:{len(shiryo_records)}件")
     except Exception as e:
         print(f"スプレッドシート読み込みエラー: {e}")
