@@ -1,6 +1,6 @@
 """
 岡・入井のやり取り要約
-対象3チャンネルから岡・入井のスレッドを抽出し翌朝8時に報告
+対象3チャンネルから岡・入井のスレッドを抽出し翌朝8時に1メッセージで報告
 """
 
 import os
@@ -19,13 +19,19 @@ SLACK_NOTIFY_CHANNEL = "C0BG7NQ5Y3W"
 JST = ZoneInfo("Asia/Tokyo")
 
 TARGET_CHANNELS = ["C07DE0GFZPV", "C0ADL8GR4NT", "C04ERALDWR4"]
-OKA_ID   = "U02KSNGJJ4C"
-IRII_ID  = "U08MRMAD2MC"
+OKA_ID  = "U02KSNGJJ4C"
+IRII_ID = "U08MRMAD2MC"
 TARGET_USERS = {OKA_ID, IRII_ID}
+
+# 挨拶・定型文（除去対象）
+GREETING_PATTERNS = [
+    r'^お疲れ様です[。！!]*\s*', r'^おはようございます[。！!]*\s*',
+    r'^こんにちは[。！!]*\s*', r'^よろしくお願いいたします[。！!]*\s*',
+    r'^よろしくお願いします[。！!]*\s*', r'^お世話になっております[。！!]*\s*',
+]
 
 
 def get_time_range():
-    """昨日00:00〜今日08:00"""
     now = datetime.datetime.now(tz=JST)
     today_8 = now.replace(hour=8, minute=0, second=0, microsecond=0)
     yesterday_0 = (today_8 - datetime.timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -69,11 +75,7 @@ def fetch_messages_in_range(client, channel_id, oldest, latest):
 
 def fetch_thread_replies(client, channel_id, thread_ts):
     try:
-        res = client.conversations_replies(
-            channel=channel_id,
-            ts=thread_ts,
-            limit=100
-        )
+        res = client.conversations_replies(channel=channel_id, ts=thread_ts, limit=100)
         return res.get("messages", [])
     except SlackApiError:
         return []
@@ -83,27 +85,11 @@ def clean_text(text):
     text = re.sub(r'<[^>]+\|([^>]+)>', r'\1', text)
     text = re.sub(r'<(https?://[^>]+)>', 'URL', text)
     text = re.sub(r'<[^>]+>', '', text)
+    # 挨拶を除去
+    for pat in GREETING_PATTERNS:
+        text = re.sub(pat, '', text, flags=re.MULTILINE)
     text = re.sub(r'\s+', ' ', text).strip()
     return text
-
-
-def build_thread_summary(thread_msgs, user_cache, client, oldest, latest):
-    """スレッド内のやり取りを会話形式で整形"""
-    lines = []
-    for msg in thread_msgs:
-        uid  = msg.get("user", "")
-        ts   = float(msg.get("ts", 0))
-        # 時間範囲外は除外
-        if ts < oldest or ts > latest:
-            continue
-        if uid not in TARGET_USERS:
-            continue
-        time_str = datetime.datetime.fromtimestamp(ts, tz=JST).strftime("%H:%M")
-        name     = fetch_user_name(client, uid, user_cache)
-        text     = clean_text(msg.get("text", ""))
-        if text:
-            lines.append(f"　`{time_str}` *{name}*：{text}")
-    return lines
 
 
 def main():
@@ -114,83 +100,67 @@ def main():
     client = WebClient(token=SLACK_BOT_TOKEN)
     oldest_ts, latest_ts = get_time_range()
     oldest_dt = datetime.datetime.fromtimestamp(oldest_ts, tz=JST)
-    latest_dt = datetime.datetime.fromtimestamp(latest_ts, tz=JST)
 
-    print(f"対象期間: {oldest_dt} 〜 {latest_dt}")
+    print(f"対象期間: {oldest_dt.strftime('%m/%d')} 00:00 〜 08:00")
 
-    user_cache   = {}
-    found_threads = []
+    user_cache = {}
+    sections   = []
 
     for ch_id in TARGET_CHANNELS:
         ch_name  = fetch_channel_name(client, ch_id)
         messages = fetch_messages_in_range(client, ch_id, oldest_ts, latest_ts)
         print(f"  #{ch_name}: {len(messages)} 件取得")
 
-        # スレッド親メッセージを収集（岡か入井が投稿したもの）
         processed_threads = set()
+        ch_lines = []
 
         for msg in messages:
-            uid      = msg.get("user", "")
+            uid       = msg.get("user", "")
             thread_ts = msg.get("thread_ts") or msg.get("ts")
 
-            # 岡か入井が関与していないメッセージはスキップ
             if uid not in TARGET_USERS:
                 continue
             if thread_ts in processed_threads:
                 continue
             processed_threads.add(thread_ts)
 
-            # スレッド全体を取得
             thread_msgs = fetch_thread_replies(client, ch_id, thread_ts)
             if not thread_msgs:
                 thread_msgs = [msg]
 
-            # スレッド内に岡・入井両方が含まれているか確認
-            thread_users = {m.get("user") for m in thread_msgs}
-            has_oka  = OKA_ID in thread_users
-            has_irii = IRII_ID in thread_users
+            for m in thread_msgs:
+                m_uid = m.get("user", "")
+                m_ts  = float(m.get("ts", 0))
+                if m_ts < oldest_ts or m_ts > latest_ts:
+                    continue
+                if m_uid not in TARGET_USERS:
+                    continue
+                text = clean_text(m.get("text", ""))
+                if not text:
+                    continue
+                time_str = datetime.datetime.fromtimestamp(m_ts, tz=JST).strftime("%H:%M")
+                name     = fetch_user_name(client, m_uid, user_cache)
+                ch_lines.append(f"　`{time_str}` {name}：{text}")
 
-            # 片方しかいないスレッドも含める（動きがあれば報告）
-            summary_lines = build_thread_summary(thread_msgs, user_cache, client, oldest_ts, latest_ts)
-            if not summary_lines:
-                continue
+        if ch_lines:
+            sections.append(f"*#{ch_name}*\n" + "\n".join(ch_lines))
 
-            parent_time = datetime.datetime.fromtimestamp(float(thread_ts), tz=JST).strftime("%H:%M")
-            members = []
-            if has_oka:
-                members.append("岡")
-            if has_irii:
-                members.append("入井")
-
-            found_threads.append({
-                "channel": ch_name,
-                "time":    parent_time,
-                "members": "・".join(members),
-                "lines":   summary_lines,
-            })
-
-    if not found_threads:
-        print("該当するやり取りはありませんでした。活動のある日のみ投稿します。")
+    if not sections:
+        print("該当するやり取りはありませんでした。")
         return
 
-    # 各スレッドを別メッセージで投稿
     date_str = oldest_dt.strftime("%m/%d")
-    for t in found_threads:
-        header = (
-            f":speech_balloon: *岡・入井 やり取り要約* `{date_str}`\n"
-            f"`#{t['channel']}` {t['time']} 【{t['members']}】\n"
-            f"{'─' * 35}"
-        )
-        body   = "\n".join(t["lines"])
-        text   = header + "\n" + body
+    text = (
+        f":speech_balloon: *岡・入井 やり取り要約* `{date_str}`\n"
+        f"{'━' * 40}\n"
+        + "\n\n".join(sections)
+    )
 
-        try:
-            client.chat_postMessage(channel=SLACK_NOTIFY_CHANNEL, text=text)
-            print(f"  投稿: #{t['channel']} {t['time']}")
-        except SlackApiError as e:
-            print(f"  投稿失敗: {e.response.get('error')}")
-
-    print("完了！")
+    try:
+        client.chat_postMessage(channel=SLACK_NOTIFY_CHANNEL, text=text)
+        print("投稿完了！")
+    except SlackApiError as e:
+        print(f"投稿失敗: {e.response.get('error')}")
 
 
 if __name__ == "__main__":
