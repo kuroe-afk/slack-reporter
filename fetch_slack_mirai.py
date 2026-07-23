@@ -177,8 +177,9 @@ def extract_field(text, labels):
 
 
 def extract_name(raw):
-    """「徳田様_トクダ様」「大谷　諒様(オオタニ様)」→「徳田 様」「大谷　諒 様」"""
-    name = re.sub(r'[（(][^）)]*[）)]', '', raw)
+    """「男性・江藤（エトウ）様」「徳田様_トクダ様」「大谷　諒様(オオタニ様)」→「江藤 様」「徳田 様」「大谷　諒 様」"""
+    name = re.sub(r'^(男性|女性)\s*[・･/]\s*', '', raw)
+    name = re.sub(r'[（(][^）)]*[）)]', '', name)
     name = name.split('_')[0].strip()
     name = re.sub(r'\s*様\s*$', '', name).strip()
     return name + ' 様'
