@@ -335,7 +335,10 @@ def post_slack_notify_apo(client, msg, poster_name, sheet_status, draft_status, 
     client.chat_postMessage(channel=SLACK_NOTIFY_CHANNEL, text=text)
 
 
-def post_thread_reply_shiryo(client, msg, poster_name, draft_status):
+SHIRYO_SHEET_LINK = "https://docs.google.com/spreadsheets/d/1HZIaHN6_1gegrm8rFNteg-uOzXEfjYXQ5UUTie3kLmk/edit?gid=2005952423#gid=2005952423"
+
+
+def post_thread_reply_shiryo(client, msg, poster_name, draft_status, is_shiryo=False):
     draft_label = ":e-mail: Gmail下書き作成済み" if draft_status == "ok" else ":x: 下書き作成失敗"
     text = (
         f"{SLACK_MENTION}\n"
@@ -344,6 +347,8 @@ def post_thread_reply_shiryo(client, msg, poster_name, draft_status):
         f"【投稿者】 {poster_name}\n"
         f"【スプシ照合】 対象外　{draft_label}"
     )
+    if is_shiryo:
+        text += f"\n:g:：{SHIRYO_SHEET_LINK}"
     client.chat_postMessage(channel=SLACK_CHANNEL_ID, text=text, thread_ts=msg["タイムスタンプ"])
 
 
@@ -484,7 +489,7 @@ def main():
                     print(f"  → Gmail下書き失敗: {e}")
                     draft_status = "error"
 
-                post_thread_reply_shiryo(slack, msg, poster, draft_status)
+                post_thread_reply_shiryo(slack, msg, poster, draft_status, is_shiryo=True)
 
             # リアクション
             try:
