@@ -307,13 +307,18 @@ def add_reaction(client, timestamp):
             print(f"  → リアクション失敗: {e.response.get('error')}")
 
 
-def post_thread_reply(client, timestamp, sheet_status, draft_status):
+SHIRYO_SHEET_LINK = "https://docs.google.com/spreadsheets/d/1qk7_gipzGXz3cveIWIXkYfg2-g6jqGl8NwHx5IF3K4E/edit?gid=1890993103#gid=1890993103"
+
+
+def post_thread_reply(client, timestamp, sheet_status, draft_status, is_shiryo=False):
     check_label = ":white_check_mark: スプシ登録済み" if sheet_status == "registered" else ":warning: スプシ未登録（要確認）"
     draft_label = ":e-mail: Gmail下書き作成済み" if draft_status == "ok" else ":x: 下書き作成失敗"
     text = (
         f"{SLACK_MENTION}\n"
         f"【スプシ照合】 {check_label}　{draft_label}"
     )
+    if is_shiryo:
+        text += f"\n※:g:資料送付日：{SHIRYO_SHEET_LINK}"
     try:
         client.chat_postMessage(channel=SLACK_CHANNEL_ID, text=text, thread_ts=timestamp)
     except SlackApiError as e:
@@ -424,8 +429,9 @@ def main():
                 draft_status = "error"
 
             # スレッド返信とリアクション
+            is_shiryo = "【資料依頼" in text
             try:
-                post_thread_reply(slack, msg["タイムスタンプ"], sheet_status, draft_status)
+                post_thread_reply(slack, msg["タイムスタンプ"], sheet_status, draft_status, is_shiryo)
                 add_reaction(slack, msg["タイムスタンプ"])
                 print(f"  → 処理完了: {keyword} / 下書き:{draft_status} / スプシ:{sheet_status}")
             except SlackApiError as e:
