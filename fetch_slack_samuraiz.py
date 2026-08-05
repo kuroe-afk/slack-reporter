@@ -212,6 +212,8 @@ def extract_field(text, label):
     val = re.sub(r'<[^>]+>', '', val)
     # 「（よみ）」などカッコ内の読み仮名を除去（「様」は残す）
     val = re.sub(r'[　\s]*[（(].+?[）)]', '', val)
+    # 末尾の「男性」「女性」などの性別表記を除去
+    val = re.sub(r'[　\s]*[男女]性\s*$', '', val)
     return val.strip()
 
 
