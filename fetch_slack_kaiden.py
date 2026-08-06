@@ -30,9 +30,8 @@ CHANNEL_ANKEN = {
     "C0ATN807RNG": "MIRAI",        # miraisama
     "C08SM1MTW4W": "ixrea",        # ixrea
     "C07959RG11V": "サムライズ",    # サムライズさま
-    # 以下は確認後に追加
-    # "XXXXXXXXXX": "採用代行",
-    # "XXXXXXXXXX": "tasukaru_shinki",
+    "C07KPLGTDS4": "tasukaru_shinki",  # tasukaru-shinnki
+    # "XXXXXXXXXX": "採用代行",  # チャンネル未確認
 }
 
 
