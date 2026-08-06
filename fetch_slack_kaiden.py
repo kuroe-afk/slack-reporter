@@ -31,7 +31,7 @@ CHANNEL_ANKEN = {
     "C08SM1MTW4W": "ixrea",        # ixrea
     "C07959RG11V": "サムライズ",    # サムライズさま
     "C07KPLGTDS4": "tasukaru_shinki",  # tasukaru-shinnki
-    # "XXXXXXXXXX": "採用代行",  # チャンネル未確認
+    "C0BJSJA4AN7": "採用代行",          # 採用代行
 }
 
 
