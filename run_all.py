@@ -20,6 +20,7 @@ import fetch_slack_ap_planning as reporter_ap_planning
 import fetch_slack_gms as reporter_gms
 import fetch_slack_nippongas as reporter_nippongas
 import fetch_slack_bridgeplus as reporter_bridgeplus
+import fetch_slack_saiyo as reporter_saiyo
 
 CLIENTS = [
     ("汎用", reporter_generic),
@@ -33,6 +34,7 @@ CLIENTS = [
     ("gms", reporter_gms),
     ("nippongas", reporter_nippongas),
     ("bridgeplus", reporter_bridgeplus),
+    ("saiyo", reporter_saiyo),
 ]
 
 
