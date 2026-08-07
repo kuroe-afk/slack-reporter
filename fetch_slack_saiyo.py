@@ -29,7 +29,7 @@ FETCH_LIMIT  = 50
 LAST_TS_FILE = "last_timestamp_saiyo.txt"
 
 TEMPLATE_APO = (
-    "[toall]\n\n"
+    "@ALL\n\n"
     "お世話になっております。\n"
     "下記、アポイント獲得の報告でございます。\n"
     "恐れ入りますが、ご対応のほどよろしくお願いいたします。\n\n"
@@ -37,7 +37,7 @@ TEMPLATE_APO = (
 )
 
 TEMPLATE_SHIRYO = (
-    "[toall]\n\n"
+    "@ALL\n\n"
     "お世話になっております。\n"
     "下記、資料送付依頼でございます。\n"
     "恐れ入りますが、ご対応のほどよろしくお願いいたします。\n\n"
@@ -45,7 +45,7 @@ TEMPLATE_SHIRYO = (
 )
 
 TEMPLATE_MIKOMI = (
-    "[toall]\n\n"
+    "@ALL\n\n"
     "お世話になっております。\n"
     "下記、アポイント見込みのご報告でございます。\n"
     "恐れ入りますが、ご対応のほどよろしくお願いいたします。\n\n"
