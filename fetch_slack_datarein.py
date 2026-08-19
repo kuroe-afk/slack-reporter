@@ -265,8 +265,9 @@ def post_thread_reply(client, timestamp, sheet_status, draft_status):
     check_label = ":white_check_mark: スプシ登録済み" if sheet_status == "registered" else ":warning: スプシ未登録（要確認）"
     draft_label = ":e-mail: Gmail下書き作成済み" if draft_status == "ok" else ":x: 下書き作成失敗"
     text = (
+        f"@事務チーム\n"
         f"【スプシ照合】 {check_label}　{draft_label}\n"
-        f"※ 資料送付スプシ：{SHIRYO_SHEET_LINK}"
+        f"※:g:資料送付日：{SHIRYO_SHEET_LINK}"
     )
     try:
         client.chat_postMessage(channel=SLACK_CHANNEL_ID, text=text, thread_ts=timestamp)
