@@ -38,6 +38,7 @@ KEYWORDS     = ["【アポ", "【見込み", "【資料"]
 FETCH_LIMIT  = 50
 LAST_TS_FILE = "last_timestamp_datarein.txt"
 SOURCE_CHANNEL_NAME = "datarein"
+SHIRYO_SHEET_LINK   = "https://docs.google.com/spreadsheets/d/1g52sf9OltxFyOQD-IOE4WdkT45bLZW5EeMFqOl6MgnE/edit?gid=950486788#gid=950486788"
 
 # ── 資料用Gmail ──
 MAIL_FROM_SHIRYO = "datarein@tasukaru39.com"
@@ -260,6 +261,19 @@ def add_reaction(client, timestamp):
             print(f"  → リアクション失敗: {e.response.get('error')}")
 
 
+def post_thread_reply(client, timestamp, sheet_status, draft_status):
+    check_label = ":white_check_mark: スプシ登録済み" if sheet_status == "registered" else ":warning: スプシ未登録（要確認）"
+    draft_label = ":e-mail: Gmail下書き作成済み" if draft_status == "ok" else ":x: 下書き作成失敗"
+    text = (
+        f"【スプシ照合】 {check_label}　{draft_label}\n"
+        f"※ 資料送付スプシ：{SHIRYO_SHEET_LINK}"
+    )
+    try:
+        client.chat_postMessage(channel=SLACK_CHANNEL_ID, text=text, thread_ts=timestamp)
+    except SlackApiError as e:
+        print(f"  → スレッド返信失敗: {e.response.get('error')}")
+
+
 def post_to_slack(client, msg, sheet_status, poster_name, draft_text):
     check_label = "✅ スプシ登録済み" if sheet_status == "registered" else "⚠️ スプシ未登録（要確認）"
     text = (
@@ -327,15 +341,21 @@ def main():
                     to_email   = extract_field(text, ["e-mail", "mail", "メール", "Email"]) or ""
 
                     body = BODY_SHIRYO.format(company=company, person=person)
-                    create_gmail_draft(
-                        gmail_datarein,
-                        sender=MAIL_FROM_SHIRYO,
-                        to=to_email,
-                        cc=MAIL_CC_SHIRYO,
-                        subject=SUBJECT_SHIRYO,
-                        body=body,
-                    )
+                    draft_status = "ok"
+                    try:
+                        create_gmail_draft(
+                            gmail_datarein,
+                            sender=MAIL_FROM_SHIRYO,
+                            to=to_email,
+                            cc=MAIL_CC_SHIRYO,
+                            subject=SUBJECT_SHIRYO,
+                            body=body,
+                        )
+                    except Exception as e:
+                        draft_status = "error"
+                        print(f"  → Gmail下書き作成失敗: {e}")
                     print(f"  → 【資料】Gmail下書き作成: {company} / {person} / To:{to_email}")
+                    post_thread_reply(slack, msg["タイムスタンプ"], status, draft_status)
 
                 elif "【アポ" in text:
                     match = check_in_sheet(apo_records, text)
