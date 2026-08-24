@@ -30,6 +30,8 @@ SLACK_NOTIFY_CHANNEL = "C0BC7SYFP36"   # クライアント報告用--下書き-
 SPREADSHEET_ID   = "1g52sf9OltxFyOQD-IOE4WdkT45bLZW5EeMFqOl6MgnE"
 CREDENTIALS_FILE = "credentials.json"
 
+SLACK_MENTION        = os.getenv("SLACK_MENTION", "")
+
 GMAIL_CLIENT_ID      = os.getenv("GMAIL_CLIENT_ID")
 GMAIL_CLIENT_SECRET  = os.getenv("GMAIL_CLIENT_SECRET")
 REFRESH_TOKEN_DATAREIN = os.getenv("GMAIL_REFRESH_TOKEN_DATAREIN")
@@ -265,7 +267,7 @@ def post_thread_reply(client, timestamp, sheet_status, draft_status):
     check_label = ":white_check_mark: スプシ登録済み" if sheet_status == "registered" else ":warning: スプシ未登録（要確認）"
     draft_label = ":e-mail: Gmail下書き作成済み" if draft_status == "ok" else ":x: 下書き作成失敗"
     text = (
-        f"@事務チーム\n"
+        f"{SLACK_MENTION}\n"
         f"【スプシ照合】 {check_label}　{draft_label}\n"
         f"※:g:資料送付日：{SHIRYO_SHEET_LINK}"
     )
