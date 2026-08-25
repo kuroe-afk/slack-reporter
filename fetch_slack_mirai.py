@@ -39,7 +39,7 @@ LAST_TS_FILE = "last_timestamp_mirai.txt"
 
 # ── アポ・見込み用（jimucenterアカウントから送信、宛先固定）──
 MAIL_FROM_APO_MIKOMI = "tasukaru.jimucenter@gmail.com"
-MAIL_TO_APO_MIKOMI   = "hara@mirai-tofuture.com"
+MAIL_TO_APO_MIKOMI   = "hara@mirai-tofuture.com, kaneko@mirai-tofuture.com"
 MAIL_CC_APO_MIKOMI   = (
     "okanaho@tasukaru39.com, s.iwai@tasukaru39.com, s.takaki@tasukaru39.com, "
     "n.harimaya@tasukaru39.com, kuroe@tasukaru39.com"
