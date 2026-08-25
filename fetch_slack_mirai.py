@@ -74,7 +74,7 @@ BODY_MIKOMI = """\
 
 # ── 資料用（mirai@tasukaru39.comから送信、宛先はSlack本文から抽出）──
 MAIL_FROM_SHIRYO = "mirai@tasukaru39.com"
-MAIL_CC_SHIRYO    = "hara@mirai-tofuture.com"
+MAIL_CC_SHIRYO    = "hara@mirai-tofuture.com, kaneko@mirai-tofuture.com"
 SUBJECT_SHIRYO    = "【株式会社MIRAI】資料送付のご案内"
 
 BODY_SHIRYO = """\
