@@ -211,8 +211,48 @@ def add_reaction(client, ts):
 
 # ── メイン処理 ──
 
+def register_message(client, ss, text, ts, thread_ts=None):
+    """1件のメッセージをスプシに登録する。thread_ts は返信先スレッドのts。"""
+    tab = detect_tab(text)
+    if not tab:
+        print(f"  → 企業名不明のためスキップ: {text[:40]}")
+        return
+
+    ws   = ss.worksheet(tab)
+    urls = ws.col_values(5)
+    url  = make_thread_url(ts)
+    if url in urls:
+        return  # 重複スキップ
+
+    dt_str  = datetime.datetime.fromtimestamp(float(ts), tz=ZoneInfo("Asia/Tokyo")).strftime("%Y-%m-%d %H:%M:%S")
+    mgmt_id = make_management_id(ts)
+    anken   = extract_field(text, ["案件名"])
+    content = extract_field(text, ["内容"])
+    f_names = get_reaction_names(client, ts)
+    g_check = has_csv_reply(client, thread_ts or ts)
+
+    a_col    = ws.col_values(1)
+    next_row = next((i + 1 for i, v in enumerate(a_col) if i > 0 and not v.strip()), len(a_col) + 1)
+    ws.update(f"A{next_row}:G{next_row}",
+              [[mgmt_id, dt_str, anken, content, url, f_names, g_check]],
+              value_input_option="USER_ENTERED")
+
+    reply_ts = thread_ts or ts
+    try:
+        client.chat_postMessage(
+            channel=SLACK_CHANNEL_ID,
+            text=f":white_check_mark: 管理番号 {mgmt_id} で登録しました",
+            thread_ts=reply_ts
+        )
+    except SlackApiError as e:
+        print(f"  → 返信失敗: {e.response.get('error')}")
+
+    add_reaction(client, ts)
+    print(f"  → スプシ追記: [{tab}] {mgmt_id} / {anken}")
+
+
 def process_new_messages(client, ss):
-    """新着メッセージをスプシに追記"""
+    """新着メッセージ（親投稿＋スレッド返信）をスプシに追記"""
     last_ts  = load_last_timestamp()
     fetch_ts = datetime.datetime.now(tz=ZoneInfo("Asia/Tokyo")).timestamp()
 
@@ -222,50 +262,57 @@ def process_new_messages(client, ss):
 
     res      = client.conversations_history(**kwargs)
     messages = res.get("messages", [])
-    print(f"  → {len(messages)} 件取得")
+    print(f"  → {len(messages)} 件取得（親投稿）")
 
+    # 親投稿を処理しつつ、返信があるものはスレッドも確認
+    parent_ts_list = []
     for msg in reversed(messages):
         text = msg.get("text", "")
-        if TRIGGER_KEYWORD not in text:
-            continue
+        ts   = msg.get("ts", "")
+        if TRIGGER_KEYWORD in text:
+            register_message(client, ss, text, ts)
+        if int(msg.get("reply_count", 0)) > 0:
+            parent_ts_list.append(ts)
 
-        ts  = msg.get("ts", "")
-        tab = detect_tab(text)
-        if not tab:
-            print(f"  → 企業名不明のためスキップ: {text[:40]}")
-            continue
-
-        # 既存行チェック（重複防止）
-        ws   = ss.worksheet(tab)
-        urls = ws.col_values(5)   # E列
-        url  = make_thread_url(ts)
-        if url in urls:
-            continue
-
-        dt_str  = datetime.datetime.fromtimestamp(float(ts), tz=ZoneInfo("Asia/Tokyo")).strftime("%Y-%m-%d %H:%M:%S")
-        mgmt_id = make_management_id(ts)
-        anken   = extract_field(text, ["案件名"])
-        content = extract_field(text, ["内容"])
-        f_names = get_reaction_names(client, ts)
-        g_check = has_csv_reply(client, ts)
-
-        # A列が空の最初の行（ヘッダー除く）を探して書き込む
-        a_col = ws.col_values(1)
-        next_row = next((i + 1 for i, v in enumerate(a_col) if i > 0 and not v.strip()), len(a_col) + 1)
-        ws.update(f"A{next_row}:G{next_row}",
-                  [[mgmt_id, dt_str, anken, content, url, f_names, g_check]],
-                  value_input_option="USER_ENTERED")
-        # スレッドに登録完了を返信
+    # スレッド返信を確認（last_ts以降の新着返信のみ）
+    for parent_ts in parent_ts_list:
         try:
-            client.chat_postMessage(
-                channel=SLACK_CHANNEL_ID,
-                text=f":white_check_mark: 管理番号 {mgmt_id} で登録しました",
-                thread_ts=ts
-            )
+            rep_kwargs = {"channel": SLACK_CHANNEL_ID, "ts": parent_ts}
+            if last_ts:
+                rep_kwargs["oldest"] = last_ts
+            res2    = client.conversations_replies(**rep_kwargs)
+            replies = res2.get("messages", [])
+            for reply in replies:
+                if reply.get("ts") == parent_ts:
+                    continue  # 親投稿自身はスキップ
+                if TRIGGER_KEYWORD in reply.get("text", ""):
+                    register_message(client, ss, reply["text"], reply["ts"], thread_ts=parent_ts)
         except SlackApiError as e:
-            print(f"  → 返信失敗: {e.response.get('error')}")
-        add_reaction(client, ts)
-        print(f"  → スプシ追記: [{tab}] {mgmt_id} / {anken}")
+            print(f"  → スレッド取得失敗: {e.response.get('error')}")
+
+    # 親投稿がlast_ts以前でもスレッドに新着返信がある可能性を拾う
+    # → チャンネル全体の最新100件の親投稿のスレッドも確認
+    res3     = client.conversations_history(channel=SLACK_CHANNEL_ID, limit=FETCH_LIMIT)
+    all_msgs = res3.get("messages", [])
+    for msg in all_msgs:
+        parent_ts = msg.get("ts", "")
+        if int(msg.get("reply_count", 0)) == 0:
+            continue
+        if parent_ts in parent_ts_list:
+            continue  # 上で処理済み
+        try:
+            rep_kwargs = {"channel": SLACK_CHANNEL_ID, "ts": parent_ts}
+            if last_ts:
+                rep_kwargs["oldest"] = last_ts
+            res4    = client.conversations_replies(**rep_kwargs)
+            replies = res4.get("messages", [])
+            for reply in replies:
+                if reply.get("ts") == parent_ts:
+                    continue
+                if TRIGGER_KEYWORD in reply.get("text", ""):
+                    register_message(client, ss, reply["text"], reply["ts"], thread_ts=parent_ts)
+        except SlackApiError as e:
+            print(f"  → スレッド取得失敗: {e.response.get('error')}")
 
     save_last_timestamp(fetch_ts)
 
