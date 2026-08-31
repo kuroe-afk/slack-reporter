@@ -117,12 +117,25 @@ def save_last_timestamp(ts):
         f.write(str(ts))
 
 
+SURNAME_MAP = {
+    "黒江": "黒江",
+    "岩井": "岩井",
+    "高木": "高木",
+    "入井": "入井",
+    "播磨谷": "播磨谷",
+    "岡": "岡",
+}
+
 def get_user_surname(client, user_id):
     try:
         res     = client.users_info(user=user_id)
         profile = res["user"]["profile"]
         name    = profile.get("display_name") or profile.get("real_name") or ""
-        # 苗字のみ（スペース区切りの最初、または全体）
+        # 登録済み苗字と前方一致で判定
+        for surname in SURNAME_MAP:
+            if name.startswith(surname):
+                return surname
+        # 未登録の場合はスペース前の最初の単語
         return name.split()[0] if name else user_id
     except SlackApiError:
         return user_id
