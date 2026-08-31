@@ -89,18 +89,24 @@ def make_management_id(ts):
     return f"LST-{dt.strftime('%Y%m%d-%H%M%S')}"
 
 
-def make_thread_url(ts):
+def make_thread_url(ts, thread_ts=None):
     ts_nodot = ts.replace('.', '')
-    return f"https://slack.com/archives/{SLACK_CHANNEL_ID}/p{ts_nodot}"
+    url = f"https://slack.com/archives/{SLACK_CHANNEL_ID}/p{ts_nodot}"
+    if thread_ts and thread_ts != ts:
+        url += f"?thread_ts={thread_ts}"
+    return url
 
 
 def ts_from_url(url):
-    """SlackスレッドURLからtsを復元"""
-    m = re.search(r'/p(\d+)$', url)
+    """SlackスレッドURLからts（とthread_ts）を復元"""
+    m = re.search(r'/p(\d+)', url)
     if not m:
-        return None
+        return None, None
     raw = m.group(1)
-    return raw[:10] + '.' + raw[10:]
+    ts = raw[:10] + '.' + raw[10:]
+    m2 = re.search(r'thread_ts=([\d.]+)', url)
+    thread_ts = m2.group(1) if m2 else None
+    return ts, thread_ts
 
 
 # ── Slack ──
@@ -141,17 +147,22 @@ def get_user_surname(client, user_id):
         return user_id
 
 
-def get_reaction_names(client, ts):
+def get_reaction_names(client, ts, thread_ts=None):
     """指定tsの:woman-gesturing-ok:リアクション者の苗字リストを返す"""
     try:
-        res = client.conversations_history(
-            channel=SLACK_CHANNEL_ID,
-            latest=ts,
-            oldest=str(float(ts) - 1),
-            inclusive=True,
-            limit=1
-        )
-        messages  = res.get("messages", [])
+        if thread_ts:
+            # スレッド返信はconversations_repliesで取得
+            res      = client.conversations_replies(channel=SLACK_CHANNEL_ID, ts=thread_ts)
+            messages = [m for m in res.get("messages", []) if m.get("ts") == ts]
+        else:
+            res = client.conversations_history(
+                channel=SLACK_CHANNEL_ID,
+                latest=ts,
+                oldest=str(float(ts) - 1),
+                inclusive=True,
+                limit=1
+            )
+            messages = res.get("messages", [])
         reactions = messages[0].get("reactions", []) if messages else []
 
         names = []
@@ -241,7 +252,7 @@ def register_message(client, ss, text, ts, thread_ts=None):
 
     ws   = ss.worksheet(tab)
     urls = ws.col_values(5)
-    url  = make_thread_url(ts)
+    url  = make_thread_url(ts, thread_ts)
     if url in urls:
         return  # 重複スキップ
 
@@ -249,7 +260,7 @@ def register_message(client, ss, text, ts, thread_ts=None):
     mgmt_id = make_management_id(ts)
     anken   = extract_field(text, ["案件名"])
     content = extract_field(text, ["内容"])
-    f_names = get_reaction_names(client, ts)
+    f_names = get_reaction_names(client, ts, thread_ts)
     g_check = has_csv_reply(client, thread_ts or ts)
 
     a_col    = ws.col_values(1)
@@ -355,29 +366,30 @@ def update_existing_rows(client, ss):
             if not url.startswith("https://slack.com/archives/"):
                 continue
 
-            ts = ts_from_url(url)
+            ts, thread_ts = ts_from_url(url)
             if not ts:
                 continue
 
             # F列: リアクション（空または更新が必要な場合）
             current_f = row[5] if len(row) > 5 else ""
-            new_f     = get_reaction_names(client, ts)
+            new_f     = get_reaction_names(client, ts, thread_ts)
             if new_f and new_f != current_f:
                 ws.update_cell(i, 6, new_f)
                 print(f"  → F列更新: {tab} 行{i} → {new_f}")
 
             # G列: CSV確認依頼（未チェックの場合のみ確認）
             current_g = row[6] if len(row) > 6 else ""
+            parent_ts = thread_ts or ts
             if current_g not in ("TRUE", "True", True):
-                if has_csv_reply(client, ts):
+                if has_csv_reply(client, parent_ts):
                     ws.update_cell(i, 7, True)
                     print(f"  → G列チェック: {tab} 行{i}")
 
             # リマインド: 投稿から3日経過 かつ 条件未達成 かつ 未送信
             post_dt = datetime.datetime.fromtimestamp(float(ts), tz=ZoneInfo("Asia/Tokyo"))
             age     = datetime.datetime.now(tz=ZoneInfo("Asia/Tokyo")) - post_dt
-            if age.days >= REMINDER_DAYS and needs_reminder(tab, row) and not already_reminded(client, ts):
-                send_reminder(client, ts)
+            if age.days >= REMINDER_DAYS and needs_reminder(tab, row) and not already_reminded(client, parent_ts):
+                send_reminder(client, parent_ts)
 
 
 def main():
