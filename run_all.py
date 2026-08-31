@@ -22,6 +22,7 @@ import fetch_slack_nippongas as reporter_nippongas
 import fetch_slack_bridgeplus as reporter_bridgeplus
 import fetch_slack_saiyo as reporter_saiyo
 import fetch_slack_datarein as reporter_datarein
+import fetch_slack_list_request as reporter_list_request
 
 CLIENTS = [
     ("汎用", reporter_generic),
@@ -37,6 +38,7 @@ CLIENTS = [
     ("bridgeplus", reporter_bridgeplus),
     ("saiyo", reporter_saiyo),
     ("datarein", reporter_datarein),
+    ("list_request", reporter_list_request),
 ]
 
 
