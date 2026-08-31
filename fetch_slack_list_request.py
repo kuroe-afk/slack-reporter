@@ -133,6 +133,7 @@ def get_reaction_names(client, ts):
     try:
         res       = client.reactions_get(channel=SLACK_CHANNEL_ID, timestamp=ts)
         reactions = res.get("message", {}).get("reactions", [])
+        print(f"  [DEBUG] reactions on {ts}: {[r.get('name') for r in reactions]}")
         names = []
         for r in reactions:
             if r.get("name", "").startswith(REACTION_NAME):
