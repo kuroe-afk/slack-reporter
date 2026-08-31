@@ -131,8 +131,15 @@ def get_user_surname(client, user_id):
 def get_reaction_names(client, ts):
     """指定tsの:woman-gesturing-ok:リアクション者の苗字リストを返す"""
     try:
-        res       = client.reactions_get(channel=SLACK_CHANNEL_ID, timestamp=ts)
-        reactions = res.get("message", {}).get("reactions", [])
+        res = client.conversations_history(
+            channel=SLACK_CHANNEL_ID,
+            latest=ts,
+            oldest=str(float(ts) - 1),
+            inclusive=True,
+            limit=1
+        )
+        messages  = res.get("messages", [])
+        reactions = messages[0].get("reactions", []) if messages else []
         print(f"  [DEBUG] reactions on {ts}: {[r.get('name') for r in reactions]}")
         names = []
         for r in reactions:
@@ -140,7 +147,8 @@ def get_reaction_names(client, ts):
                 for uid in r.get("users", []):
                     names.append(get_user_surname(client, uid))
         return "、".join(names)
-    except SlackApiError:
+    except SlackApiError as e:
+        print(f"  [DEBUG] reactions取得失敗: {e.response.get('error')}")
         return ""
 
 
