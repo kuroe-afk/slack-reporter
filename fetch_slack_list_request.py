@@ -249,10 +249,12 @@ def process_new_messages(client, ss):
         f_names = get_reaction_names(client, ts)
         g_check = has_csv_reply(client, ts)
 
-        ws.append_row(
-            [mgmt_id, dt_str, anken, content, url, f_names, g_check],
-            value_input_option="USER_ENTERED"
-        )
+        # A列が空の最初の行（ヘッダー除く）を探して書き込む
+        a_col = ws.col_values(1)
+        next_row = next((i + 1 for i, v in enumerate(a_col) if i > 0 and not v.strip()), len(a_col) + 1)
+        ws.update(f"A{next_row}:G{next_row}",
+                  [[mgmt_id, dt_str, anken, content, url, f_names, g_check]],
+                  value_input_option="USER_ENTERED")
         add_reaction(client, ts)
         print(f"  → スプシ追記: [{tab}] {mgmt_id} / {anken}")
 
