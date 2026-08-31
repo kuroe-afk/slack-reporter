@@ -255,6 +255,15 @@ def process_new_messages(client, ss):
         ws.update(f"A{next_row}:G{next_row}",
                   [[mgmt_id, dt_str, anken, content, url, f_names, g_check]],
                   value_input_option="USER_ENTERED")
+        # スレッドに登録完了を返信
+        try:
+            client.chat_postMessage(
+                channel=SLACK_CHANNEL_ID,
+                text=f":white_check_mark: 管理番号 {mgmt_id} で登録しました",
+                thread_ts=ts
+            )
+        except SlackApiError as e:
+            print(f"  → 返信失敗: {e.response.get('error')}")
         add_reaction(client, ts)
         print(f"  → スプシ追記: [{tab}] {mgmt_id} / {anken}")
 
