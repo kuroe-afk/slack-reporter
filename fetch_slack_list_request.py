@@ -135,7 +135,7 @@ def get_reaction_names(client, ts):
         reactions = res.get("message", {}).get("reactions", [])
         names = []
         for r in reactions:
-            if r.get("name") == REACTION_NAME:
+            if r.get("name", "").startswith(REACTION_NAME):
                 for uid in r.get("users", []):
                     names.append(get_user_surname(client, uid))
         return "、".join(names)
