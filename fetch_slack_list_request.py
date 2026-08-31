@@ -328,15 +328,19 @@ def update_existing_rows(client, ss):
             print(f"  → {tab} 読み込み失敗: {e}")
             continue
 
+        print(f"  [DEBUG] {tab}: {len(rows)} 行読み込み")
         for i, row in enumerate(rows, start=1):
             if len(row) < 5 or not row[4]:
                 continue
             url = row[4]
+            print(f"  [DEBUG] 行{i} URL={url[:60]}")
             if not url.startswith("https://slack.com/archives/"):
+                print(f"  [DEBUG] 行{i} URLスキップ")
                 continue
 
             ts = ts_from_url(url)
             if not ts:
+                print(f"  [DEBUG] 行{i} ts取得失敗")
                 continue
 
             # F列: リアクション（空または更新が必要な場合）
