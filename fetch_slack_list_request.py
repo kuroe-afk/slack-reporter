@@ -153,7 +153,7 @@ def has_csv_reply(client, ts):
 
 def add_reaction(client, ts):
     try:
-        client.reactions_add(channel=SLACK_CHANNEL_ID, timestamp=ts, name="ballot_box_with_check")
+        client.reactions_add(channel=SLACK_CHANNEL_ID, timestamp=ts, name="g")
     except SlackApiError as e:
         if e.response.get("error") != "already_reacted":
             print(f"  → リアクション失敗: {e.response.get('error')}")
