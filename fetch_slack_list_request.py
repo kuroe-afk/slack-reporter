@@ -33,6 +33,11 @@ TRIGGER_KEYWORD  = "【リスト作成依頼】"
 CSV_KEYWORD      = "【CSV確認依頼】"
 REACTION_NAME    = "woman-gesturing-ok"
 
+MENTION_OKA      = "<@U02KSNGJJ4C>"
+SLACK_MENTION    = os.getenv("SLACK_MENTION", "")
+REMINDER_DAYS    = 3
+REMINDER_KEYWORD = "こちらの進捗確認をお願いします"
+
 TAB_SANGO    = "SANGO様"
 TAB_TASUKARU = "Tasukaru"
 
@@ -151,6 +156,51 @@ def has_csv_reply(client, ts):
     return False
 
 
+def needs_reminder(tab, row):
+    """リマインドが必要かどうかを判定"""
+    def is_empty(val):
+        return not val or val.strip() in ("", "FALSE", "False")
+
+    if tab == TAB_SANGO:
+        g = row[6] if len(row) > 6 else ""
+        h = row[7] if len(row) > 7 else ""
+        return is_empty(g) or is_empty(h)
+
+    if tab == TAB_TASUKARU:
+        g = row[6] if len(row) > 6 else ""
+        j = row[9] if len(row) > 9 else ""
+        h = row[7] if len(row) > 7 else ""
+        i = row[8] if len(row) > 8 else ""
+        return (is_empty(g) or is_empty(j)) or (is_empty(h) and is_empty(i))
+
+    return False
+
+
+def already_reminded(client, ts):
+    """スレッドにリマインド済みかどうか確認"""
+    try:
+        res = client.conversations_replies(channel=SLACK_CHANNEL_ID, ts=ts)
+        for msg in res.get("messages", [])[1:]:
+            if REMINDER_KEYWORD in msg.get("text", ""):
+                return True
+    except SlackApiError:
+        pass
+    return False
+
+
+def send_reminder(client, ts):
+    """スレッドにリマインドを投稿"""
+    text = (
+        f"{MENTION_OKA} {SLACK_MENTION}\n"
+        f":warning:こちらの進捗確認をお願いします。"
+    )
+    try:
+        client.chat_postMessage(channel=SLACK_CHANNEL_ID, text=text, thread_ts=ts)
+        print(f"  → リマインド送信: ts={ts}")
+    except SlackApiError as e:
+        print(f"  → リマインド失敗: {e.response.get('error')}")
+
+
 def add_reaction(client, ts):
     try:
         client.reactions_add(channel=SLACK_CHANNEL_ID, timestamp=ts, name="g")
@@ -243,6 +293,12 @@ def update_existing_rows(client, ss):
                 if has_csv_reply(client, ts):
                     ws.update_cell(i, 7, True)
                     print(f"  → G列チェック: {tab} 行{i}")
+
+            # リマインド: 投稿から3日経過 かつ 条件未達成 かつ 未送信
+            post_dt = datetime.datetime.fromtimestamp(float(ts), tz=ZoneInfo("Asia/Tokyo"))
+            age     = datetime.datetime.now(tz=ZoneInfo("Asia/Tokyo")) - post_dt
+            if age.days >= REMINDER_DAYS and needs_reminder(tab, row) and not already_reminded(client, ts):
+                send_reminder(client, ts)
 
 
 def main():
