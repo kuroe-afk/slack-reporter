@@ -140,15 +140,14 @@ def get_reaction_names(client, ts):
         )
         messages  = res.get("messages", [])
         reactions = messages[0].get("reactions", []) if messages else []
-        print(f"  [DEBUG] reactions on {ts}: {[r.get('name') for r in reactions]}")
+
         names = []
         for r in reactions:
             if r.get("name", "").startswith(REACTION_NAME):
                 for uid in r.get("users", []):
                     names.append(get_user_surname(client, uid))
         return "、".join(names)
-    except SlackApiError as e:
-        print(f"  [DEBUG] reactions取得失敗: {e.response.get('error')}")
+    except SlackApiError:
         return ""
 
 
@@ -336,19 +335,15 @@ def update_existing_rows(client, ss):
             print(f"  → {tab} 読み込み失敗: {e}")
             continue
 
-        print(f"  [DEBUG] {tab}: {len(rows)} 行読み込み")
         for i, row in enumerate(rows, start=1):
             if len(row) < 5 or not row[4]:
                 continue
             url = row[4]
-            print(f"  [DEBUG] 行{i} URL={url[:60]}")
             if not url.startswith("https://slack.com/archives/"):
-                print(f"  [DEBUG] 行{i} URLスキップ")
                 continue
 
             ts = ts_from_url(url)
             if not ts:
-                print(f"  [DEBUG] 行{i} ts取得失敗")
                 continue
 
             # F列: リアクション（空または更新が必要な場合）
