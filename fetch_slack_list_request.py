@@ -429,6 +429,9 @@ def update_existing_rows(client, ss):
                 if current_done not in ("TRUE", "True", True):
                     ws.update_cell(i, COL_DONE[tab], True)
                     print(f"  → 作業終了チェック: {tab} 行{i}")
+                # 作業メモを空白に戻す
+                ws.update_cell(i, COL_PROGRESS[tab], "")
+                print(f"  → 作業メモクリア: {tab} 行{i}")
 
             # リマインド: 投稿から3日経過 かつ 条件未達成 かつ 未送信
             post_dt = datetime.datetime.fromtimestamp(float(ts), tz=ZoneInfo("Asia/Tokyo"))
