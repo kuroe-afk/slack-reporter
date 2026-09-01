@@ -41,6 +41,10 @@ REMINDER_KEYWORD = "こちらの進捗確認をお願いします"
 TAB_SANGO    = "SANGO様"
 TAB_TASUKARU = "Tasukaru"
 
+# 列番号（1-based）
+COL_DONE     = {TAB_SANGO: 13, TAB_TASUKARU: 15}   # M列 / O列
+COL_PROGRESS = {TAB_SANGO: 14, TAB_TASUKARU: 16}   # N列 / P列
+
 FETCH_LIMIT = 100
 
 
@@ -173,6 +177,34 @@ def get_reaction_names(client, ts, thread_ts=None):
         return "、".join(names)
     except SlackApiError:
         return ""
+
+
+def extract_progress_report(text):
+    """【作業経過報告】の対応範囲〜メモ:の内容を抽出"""
+    m = re.search(r'対応範囲[\s　]*[：:]\s*([\s\S]+?)(?=\n*$)', text)
+    if not m:
+        return ""
+    return m.group(0).strip()
+
+
+def get_thread_progress_and_done(client, parent_ts):
+    """スレッド内の最新【作業経過報告】と【作業終了】を返す"""
+    progress_text = ""
+    is_done       = False
+    try:
+        res      = client.conversations_replies(channel=SLACK_CHANNEL_ID, ts=parent_ts)
+        messages = res.get("messages", [])
+        for msg in messages[1:]:
+            text = msg.get("text", "")
+            if "【作業経過報告】" in text:
+                extracted = extract_progress_report(text)
+                if extracted:
+                    progress_text = extracted  # 上書き（最新を使う）
+            if "【作業終了】" in text:
+                is_done = True
+    except SlackApiError:
+        pass
+    return progress_text, is_done
 
 
 def has_csv_reply(client, ts):
@@ -384,6 +416,19 @@ def update_existing_rows(client, ss):
                 if has_csv_reply(client, parent_ts):
                     ws.update_cell(i, 7, True)
                     print(f"  → G列チェック: {tab} 行{i}")
+
+            # 作業経過報告・作業終了チェック
+            progress, is_done = get_thread_progress_and_done(client, parent_ts)
+            if progress:
+                current_progress = row[COL_PROGRESS[tab] - 1] if len(row) >= COL_PROGRESS[tab] else ""
+                if progress != current_progress:
+                    ws.update_cell(i, COL_PROGRESS[tab], progress)
+                    print(f"  → 作業経過報告更新: {tab} 行{i}")
+            if is_done:
+                current_done = row[COL_DONE[tab] - 1] if len(row) >= COL_DONE[tab] else ""
+                if current_done not in ("TRUE", "True", True):
+                    ws.update_cell(i, COL_DONE[tab], True)
+                    print(f"  → 作業終了チェック: {tab} 行{i}")
 
             # リマインド: 投稿から3日経過 かつ 条件未達成 かつ 未送信
             post_dt = datetime.datetime.fromtimestamp(float(ts), tz=ZoneInfo("Asia/Tokyo"))
