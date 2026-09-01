@@ -297,7 +297,7 @@ def register_message(client, ss, text, ts, thread_ts=None):
     dt_str  = datetime.datetime.fromtimestamp(float(ts), tz=ZoneInfo("Asia/Tokyo")).strftime("%Y-%m-%d %H:%M:%S")
     mgmt_id = make_management_id(ts)
     anken   = extract_field(text, ["案件名"])
-    content = extract_field(text, ["内容"], multiline=True)
+    content = re.sub(r'[\r\n]+', ' ', extract_field(text, ["内容"], multiline=True)).strip()
     f_names = get_reaction_names(client, ts, thread_ts)
     g_check = has_csv_reply(client, thread_ts or ts)
 
