@@ -80,11 +80,17 @@ def detect_tab(text):
     return None
 
 
-def extract_field(text, labels):
+def extract_field(text, labels, multiline=False):
     for label in labels:
-        m = re.search(rf'{label}[\s　]*[：:]\s*(.+?)(?:\n|$)', text)
-        if m:
-            return m.group(1).strip()
+        if multiline:
+            # 次のフィールド（〇〇：）または末尾まで複数行取得
+            m = re.search(rf'{label}[\s　]*[：:]\s*([\s\S]+?)(?=\n\S+[\s　]*[：:]|\Z)', text)
+            if m:
+                return m.group(1).strip()
+        else:
+            m = re.search(rf'{label}[\s　]*[：:]\s*(.+?)(?:\n|$)', text)
+            if m:
+                return m.group(1).strip()
     return ""
 
 
@@ -291,7 +297,7 @@ def register_message(client, ss, text, ts, thread_ts=None):
     dt_str  = datetime.datetime.fromtimestamp(float(ts), tz=ZoneInfo("Asia/Tokyo")).strftime("%Y-%m-%d %H:%M:%S")
     mgmt_id = make_management_id(ts)
     anken   = extract_field(text, ["案件名"])
-    content = extract_field(text, ["内容"])
+    content = extract_field(text, ["内容"], multiline=True)
     f_names = get_reaction_names(client, ts, thread_ts)
     g_check = has_csv_reply(client, thread_ts or ts)
 
