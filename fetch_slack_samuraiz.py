@@ -108,6 +108,34 @@ https://x.gd/YfnB3
  Email: m_souji@samuraiz.co.jp
 --------------------------------------------------------------------------------"""
 
+BODY_SHIRYO_FINOPS = """\
+{company}
+{person}
+
+お世話になっております。
+株式会社サムライズの荘司でございます。
+
+この度は弊社からお電話させていただきありがとうございます。
+ご案内させていただきました FinOpsCloudability） の製品資料をお送りいたします。
+
+【資料Ⅰ】
+https://x.gd/0z8kI
+
+【資料Ⅱ】
+https://x.gd/uN7OZ
+
+ご不明な点などございましたら、本メールの返信にて荘司までお問い合わせください。
+ご確認のほど、よろしくお願いいたします。
+
+--------------------------------------------------------------------------------
+株式会社サムライズ
+ データ・マネジメント・ソリューション事業部
+ 荘司　澪 / SOUJI MIO
+ 〒141-0032 品川区大崎1-6-4新大崎勧業ビル5F
+ TEL: 03-5436-2042 FAX: 03-5436-2041
+ Email: m_souji@samuraiz.co.jp
+--------------------------------------------------------------------------------"""
+
 BODY_SHIRYO_TURBONOMIC = """\
 {company}
 {person}
@@ -412,8 +440,10 @@ def main():
                     to_email  = extract_field(text, "e-mail") or ""
                     list_type = sheet_rec["リスト"] if sheet_rec else ""
 
-                    # 投稿文またはスプシのリスト列でTurbonomic判定
-                    if "Turbonomic" in text or "Turbonomic" in list_type:
+                    # スプシC列またはSlack投稿でテンプレートを判定
+                    if "FinOps" in text or "FinOps" in list_type:
+                        body_text = BODY_SHIRYO_FINOPS.format(company=company, person=person)
+                    elif "Turbonomic" in text or "Turbonomic" in list_type:
                         body_text = BODY_SHIRYO_TURBONOMIC.format(company=company, person=person)
                     else:
                         body_text = BODY_SHIRYO_INSTANA.format(company=company, person=person)
