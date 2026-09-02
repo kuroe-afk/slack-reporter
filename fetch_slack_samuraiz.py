@@ -116,7 +116,7 @@ BODY_SHIRYO_FINOPS = """\
 株式会社サムライズの荘司でございます。
 
 この度は弊社からお電話させていただきありがとうございます。
-ご案内させていただきました FinOpsCloudability） の製品資料をお送りいたします。
+ご案内させていただきました FinOps(Cloudability） の製品資料をお送りいたします。
 
 【資料Ⅰ】
 https://x.gd/0z8kI
