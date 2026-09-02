@@ -23,6 +23,7 @@ import fetch_slack_bridgeplus as reporter_bridgeplus
 import fetch_slack_saiyo as reporter_saiyo
 import fetch_slack_datarein as reporter_datarein
 import fetch_slack_list_request as reporter_list_request
+import fetch_slack_exkey_ai as reporter_exkey_ai
 
 CLIENTS = [
     ("汎用", reporter_generic),
@@ -39,6 +40,7 @@ CLIENTS = [
     ("saiyo", reporter_saiyo),
     ("datarein", reporter_datarein),
     ("list_request", reporter_list_request),
+    ("exkey_ai", reporter_exkey_ai),
 ]
 
 
