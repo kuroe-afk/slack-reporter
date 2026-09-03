@@ -272,6 +272,35 @@ def post_thread_reply(client, timestamp, sheet_status, draft_status):
         print(f"  → スレッド返信失敗: {e.response.get('error')}")
 
 
+def extract_hojin_info(text):
+    """【法人情報】以降のテキストを抽出してSlack記法を除去する"""
+    idx = text.find("【法人情報】")
+    if idx == -1:
+        idx = text.find("【資料")
+    body = text[idx:].strip() if idx != -1 else text.strip()
+    body = clean_slack_text(body)
+    return body
+
+
+def post_shiryo_to_notify(client, msg, poster_name, hojin_body):
+    text = (
+        f"{SLACK_MENTION}\n"
+        f"*【元チャンネル】* #{SOURCE_CHANNEL_NAME}　"
+        f"*【投稿日時】* {msg['投稿日時']}　"
+        f"*【投稿者】* {poster_name}\n"
+        f"{'─' * 40}\n"
+        f"@鈴木健斗 様\n"
+        f"お世話になっております。\n"
+        f"下記、資料送付をさせていただきましたのでご報告させていただきます。\n"
+        f"よろしくお願いいたします。\n\n"
+        f"{hojin_body}"
+    )
+    try:
+        client.chat_postMessage(channel=SLACK_NOTIFY_CHANNEL, text=text)
+    except SlackApiError as e:
+        print(f"  → 通知チャンネル投稿失敗: {e.response.get('error')}")
+
+
 def post_to_slack(client, msg, sheet_status, poster_name, draft_text):
     check_label = "✅ スプシ登録済み" if sheet_status == "registered" else "⚠️ スプシ未登録（要確認）"
     text = (
@@ -353,6 +382,8 @@ def main():
                         draft_status = "error"
                         print(f"  → Gmail下書き作成失敗: {e}")
                     print(f"  → 【資料】Gmail下書き作成: {company} / {person} / To:{to_email}")
+                    hojin_body = extract_hojin_info(text)
+                    post_shiryo_to_notify(slack, msg, poster_name, hojin_body)
                     post_thread_reply(slack, msg["タイムスタンプ"], status, draft_status)
 
                 elif "【アポ" in text:
