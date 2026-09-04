@@ -1,17 +1,25 @@
 """
 エクスキーAIさま
-Slackから報告を取得 → スプシ照合 → クライアント報告用--下書き--へ通知
+Slackから報告を取得 → スプシ照合 →
+  【資料】Gmail下書き作成
+  【アポ/見込み】クライアント報告用--下書き--へ通知
 """
 
 import os
 import re
+import base64
 import datetime
 from zoneinfo import ZoneInfo
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 import gspread
 from google.oauth2.service_account import Credentials
+from google.oauth2.credentials import Credentials as OAuthCredentials
+from google.auth.transport.requests import Request
+from googleapiclient.discovery import build
 
 load_dotenv()
 
@@ -23,10 +31,43 @@ SLACK_MENTION        = os.getenv("SLACK_MENTION", "")
 SPREADSHEET_ID   = "1Qoeef0TvwiiGh8o47IJcqV2tE5NzY-105F-kcvCNrtk"
 CREDENTIALS_FILE = "credentials.json"
 
-KEYWORDS     = ["【アポ", "【見込み"]
+GMAIL_CLIENT_ID      = os.getenv("GMAIL_CLIENT_ID")
+GMAIL_CLIENT_SECRET  = os.getenv("GMAIL_CLIENT_SECRET")
+REFRESH_TOKEN_EXKEY  = os.getenv("GMAIL_REFRESH_TOKEN_EXKEY")
+
+KEYWORDS     = ["【アポ", "【見込み", "【資料"]
 FETCH_LIMIT  = 50
 LAST_TS_FILE = "last_timestamp_exkey_ai.txt"
 SOURCE_CHANNEL_NAME = "エクスキー--ai"
+
+# ── 資料用Gmail ──
+MAIL_FROM_SHIRYO = "exkey@tasukaru39.com"
+MAIL_CC_SHIRYO   = "k-uchida@exkey.jp"
+SUBJECT_SHIRYO   = "【株式会社ExKey】資料送付のご案内"
+SHIRYO_SHEET_LINK = "https://docs.google.com/spreadsheets/d/1Qoeef0TvwiiGh8o47IJcqV2tE5NzY-105F-kcvCNrtk/edit?gid=849466611#gid=849466611"
+
+BODY_SHIRYO = """\
+{company}
+{person}
+
+お世話になっております。
+株式会社ExKeyでございます。
+
+この度は弊社からお電話させていただきありがとうございます。
+ご案内させていただきました資料をお送りいたします。
+
+【資料】
+https://x.gd/KSxDy
+
+ご不明な点やご質問などございましたら、本メールにご返信いただけますと幸いです。
+お手すきの際にご確認いただけますと幸いです。
+何卒よろしくお願いいたします。
+
+--------------------------------------------------------------------------------
+株式会社ExKey
+〒107-0062 東京都港区南青山３丁目１−３ SPLINE 青山東急ビル 5F
+メールアドレス　info@exkey.jp
+--------------------------------------------------------------------------------"""
 
 CHATWORK_HEADER = (
     "[To:2223905]内田 健人さん\n"
@@ -52,6 +93,33 @@ TEMPLATE_MIKOMI = (
     "{body}\n"
     "[/info]"
 )
+
+
+# ── Gmail ──
+
+def get_gmail_service(refresh_token):
+    creds = OAuthCredentials(
+        token=None,
+        refresh_token=refresh_token,
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=GMAIL_CLIENT_ID,
+        client_secret=GMAIL_CLIENT_SECRET,
+    )
+    creds.refresh(Request())
+    return build("gmail", "v1", credentials=creds)
+
+
+def create_gmail_draft(service, sender, to, cc, subject, body):
+    msg = MIMEMultipart()
+    msg["From"]    = sender
+    msg["To"]      = to
+    msg["Cc"]      = cc
+    msg["Subject"] = subject
+    msg.attach(MIMEText(body, "plain", "utf-8"))
+    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
+    service.users().drafts().create(
+        userId="me", body={"message": {"raw": raw}}
+    ).execute()
 
 
 # ── スプレッドシート ──
@@ -98,6 +166,18 @@ def extract_field(text, labels):
             val = re.sub(r'<[^>]+>', '', val)
             return val.strip()
     return ""
+
+
+def extract_name(raw):
+    name = re.sub(r'^(男性|女性)\s*[・･/／]\s*', '', raw)
+    name = re.sub(r'[（(][^）)]*[）)]', '', name)
+    name = name.split('_')[0].strip()
+    name = re.sub(r'[　\s]*[/／・･][　\s]*(男性|女性)\s*$', '', name).strip()
+    name = re.sub(r'[　\s]+(男性|女性)\s*$', '', name).strip()
+    name = re.sub(r'\s*様\s*$', '', name).strip()
+    if '様' in name:
+        return name
+    return name + ' 様'
 
 
 def check_in_sheet(records, text):
@@ -180,12 +260,20 @@ def add_reaction(client, timestamp):
             print(f"  → リアクション失敗: {e.response.get('error')}")
 
 
-def post_thread_reply(client, timestamp, sheet_status):
+def post_thread_reply(client, timestamp, sheet_status, draft_status=None, is_shiryo=False):
     check_label = ":white_check_mark: スプシ登録済み" if sheet_status == "registered" else ":warning: スプシ未登録（要確認）"
-    text = (
-        f"{SLACK_MENTION}\n"
-        f"【スプシ照合】 {check_label}"
-    )
+    if is_shiryo:
+        draft_label = ":e-mail: Gmail下書き作成済み" if draft_status == "ok" else ":x: 下書き作成失敗"
+        text = (
+            f"{SLACK_MENTION}\n"
+            f"【スプシ照合】 {check_label}　{draft_label}\n"
+            f"※:g:資料送付日：{SHIRYO_SHEET_LINK}"
+        )
+    else:
+        text = (
+            f"{SLACK_MENTION}\n"
+            f"【スプシ照合】 {check_label}"
+        )
     try:
         client.chat_postMessage(channel=SLACK_CHANNEL_ID, text=text, thread_ts=timestamp)
     except SlackApiError as e:
@@ -220,9 +308,18 @@ def main():
         ss             = open_spreadsheet()
         apo_records    = load_sheet(ss, "アポイント取得", company_col=4, person_col=5)
         mikomi_records = load_sheet(ss, "見込み企業",     company_col=4, person_col=5)
-        print(f"  → アポ:{len(apo_records)}件 / 見込み:{len(mikomi_records)}件")
+        shiryo_records = load_sheet(ss, "資料送付",       company_col=4, person_col=5)
+        print(f"  → アポ:{len(apo_records)}件 / 見込み:{len(mikomi_records)}件 / 資料:{len(shiryo_records)}件")
     except Exception as e:
         print(f"スプレッドシートエラー: {e}")
+        return
+
+    print("Gmailに接続中...")
+    try:
+        gmail_exkey = get_gmail_service(REFRESH_TOKEN_EXKEY)
+        print("  → 接続成功")
+    except Exception as e:
+        print(f"Gmailエラー: {e}")
         return
 
     print(f"Slackチャンネル {SLACK_CHANNEL_ID} から取得中...")
@@ -240,12 +337,36 @@ def main():
             poster_name = fetch_user_name(slack, msg["投稿者ID"])
 
             try:
-                if "【アポ" in text:
+                if "【資料" in text:
+                    match  = check_in_sheet(shiryo_records, text)
+                    status = "registered" if match else "unregistered"
+                    company    = extract_field(text, ["企業名", "会社名", "社名"]) or "（会社名）"
+                    raw_person = extract_field(text, ["氏名", "担当者名", "担当者"])
+                    person     = extract_name(raw_person) if raw_person else "（担当者名）"
+                    to_email   = extract_field(text, ["e-mail", "mail", "メール", "Email"]) or ""
+                    draft_status = "ok"
+                    try:
+                        create_gmail_draft(
+                            gmail_exkey,
+                            sender=MAIL_FROM_SHIRYO,
+                            to=to_email,
+                            cc=MAIL_CC_SHIRYO,
+                            subject=SUBJECT_SHIRYO,
+                            body=BODY_SHIRYO.format(company=company, person=person),
+                        )
+                    except Exception as e:
+                        draft_status = "error"
+                        print(f"  → Gmail下書き作成失敗: {e}")
+                    print(f"  → 【資料】Gmail下書き作成: {company} / {person} / To:{to_email}")
+                    post_thread_reply(slack, msg["タイムスタンプ"], status, draft_status, is_shiryo=True)
+
+                elif "【アポ" in text:
                     match  = check_in_sheet(apo_records, text)
                     status = "registered" if match else "unregistered"
                     body   = clean_slack_text(text[text.find("【アポ"):].strip())
                     draft_text = TEMPLATE_APO.format(body=body)
                     post_to_notify(slack, msg, status, poster_name, draft_text)
+                    post_thread_reply(slack, msg["タイムスタンプ"], status)
                     print(f"  → 【アポ】通知投稿完了")
 
                 elif "【見込み" in text:
@@ -254,9 +375,9 @@ def main():
                     body   = clean_slack_text(text[text.find("【見込み"):].strip())
                     draft_text = TEMPLATE_MIKOMI.format(body=body)
                     post_to_notify(slack, msg, status, poster_name, draft_text)
+                    post_thread_reply(slack, msg["タイムスタンプ"], status)
                     print(f"  → 【見込み】通知投稿完了")
 
-                post_thread_reply(slack, msg["タイムスタンプ"], status)
                 add_reaction(slack, msg["タイムスタンプ"])
 
             except Exception as e:
