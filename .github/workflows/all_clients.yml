@@ -65,6 +65,7 @@ jobs:
           echo "GMAIL_REFRESH_TOKEN_MIRAI=${{ secrets.GMAIL_REFRESH_TOKEN_MIRAI }}" >> .env
           echo "GMAIL_REFRESH_TOKEN_BRIDGEPLUS=${{ secrets.GMAIL_REFRESH_TOKEN_BRIDGEPLUS }}" >> .env
           echo "GMAIL_REFRESH_TOKEN_DATAREIN=${{ secrets.GMAIL_REFRESH_TOKEN_DATAREIN }}" >> .env
+          echo "GMAIL_REFRESH_TOKEN_EXKEY=${{ secrets.GMAIL_REFRESH_TOKEN_EXKEY }}" >> .env
 
       - name: credentials.jsonを作成
         run: echo '${{ secrets.GOOGLE_CREDENTIALS_JSON }}' > credentials.json
