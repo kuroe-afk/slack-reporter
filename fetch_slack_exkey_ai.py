@@ -314,14 +314,6 @@ def main():
         print(f"スプレッドシートエラー: {e}")
         return
 
-    print("Gmailに接続中...")
-    try:
-        gmail_exkey = get_gmail_service(REFRESH_TOKEN_EXKEY)
-        print("  → 接続成功")
-    except Exception as e:
-        print(f"Gmailエラー: {e}")
-        return
-
     print(f"Slackチャンネル {SLACK_CHANNEL_ID} から取得中...")
     try:
         messages, fetch_ts = fetch_messages(slack)
@@ -346,6 +338,7 @@ def main():
                     to_email   = extract_field(text, ["e-mail", "mail", "メール", "Email"]) or ""
                     draft_status = "ok"
                     try:
+                        gmail_exkey = get_gmail_service(REFRESH_TOKEN_EXKEY)
                         create_gmail_draft(
                             gmail_exkey,
                             sender=MAIL_FROM_SHIRYO,
