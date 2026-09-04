@@ -227,21 +227,19 @@ def has_csv_reply(client, ts):
 
 
 def needs_reminder(tab, row):
-    """リマインドが必要かどうかを判定"""
-    def is_empty(val):
-        return not val or val.strip() in ("", "FALSE", "False")
+    """リマインドが必要かどうかを判定（完了列のどこにも✅がない場合のみTrue）"""
+    def is_checked(val):
+        return val and val.strip() not in ("", "FALSE", "False")
 
     if tab == TAB_SANGO:
-        g = row[6] if len(row) > 6 else ""
-        h = row[7] if len(row) > 7 else ""
-        return is_empty(g) or is_empty(h)
+        # G(6)/H(7)/J(9)/M(12) のどれかに✅があれば完了
+        cols = [6, 7, 9, 12]
+        return not any(is_checked(row[c]) for c in cols if len(row) > c)
 
     if tab == TAB_TASUKARU:
-        g = row[6] if len(row) > 6 else ""
-        j = row[9] if len(row) > 9 else ""
-        h = row[7] if len(row) > 7 else ""
-        i = row[8] if len(row) > 8 else ""
-        return (is_empty(g) or is_empty(j)) or (is_empty(h) and is_empty(i))
+        # G(6)/J(9)/L(11)/O(14) のどれかに✅があれば完了
+        cols = [6, 9, 11, 14]
+        return not any(is_checked(row[c]) for c in cols if len(row) > c)
 
     return False
 
