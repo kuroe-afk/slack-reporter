@@ -24,6 +24,7 @@ import fetch_slack_saiyo as reporter_saiyo
 import fetch_slack_datarein as reporter_datarein
 import fetch_slack_list_request as reporter_list_request
 import fetch_slack_exkey_ai as reporter_exkey_ai
+import fetch_gmail_inbox as reporter_gmail_inbox
 
 CLIENTS = [
     ("汎用", reporter_generic),
@@ -41,6 +42,7 @@ CLIENTS = [
     ("datarein", reporter_datarein),
     ("list_request", reporter_list_request),
     ("exkey_ai", reporter_exkey_ai),
+    ("gmail_inbox", reporter_gmail_inbox),
 ]
 
 
