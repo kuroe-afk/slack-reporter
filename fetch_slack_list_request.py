@@ -245,11 +245,14 @@ def needs_reminder(tab, row):
 
 
 def already_reminded(client, ts):
-    """スレッドにリマインド済みかどうか確認"""
+    """スレッドにリマインド済みかどうか確認（【期限なし】があればリマインド不要とみなす）"""
     try:
         res = client.conversations_replies(channel=SLACK_CHANNEL_ID, ts=ts)
-        for msg in res.get("messages", [])[1:]:
-            if REMINDER_KEYWORD in msg.get("text", ""):
+        for msg in res.get("messages", []):
+            text = msg.get("text", "")
+            if REMINDER_KEYWORD in text:
+                return True
+            if "【期限なし】" in text:
                 return True
     except SlackApiError:
         pass
