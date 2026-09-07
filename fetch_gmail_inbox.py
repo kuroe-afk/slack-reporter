@@ -5,7 +5,6 @@ Gmail受信トレイ監視スクリプト
 """
 
 import os
-import json
 import base64
 import datetime
 from zoneinfo import ZoneInfo
@@ -24,8 +23,8 @@ SLACK_NOTIFY_CHANNEL = "C0BC7SYFP36"   # クライアント報告用--下書き-
 GMAIL_CLIENT_ID     = os.getenv("GMAIL_CLIENT_ID")
 GMAIL_CLIENT_SECRET = os.getenv("GMAIL_CLIENT_SECRET")
 
-PROCESSED_IDS_FILE = "processed_gmail_ids.json"
-SKIP_LABEL         = "✅"   # このラベルが付いているメールはスキップ
+LAST_TS_FILE = "last_timestamp_gmail.txt"
+SKIP_LABEL   = "✅"   # このラベルが付いているメールはスキップ
 
 # 監視するアカウント一覧
 ACCOUNTS = [
@@ -48,18 +47,18 @@ ACCOUNTS = [
 ]
 
 
-# ── 処理済みIDの管理 ──
+# ── タイムスタンプ管理 ──
 
-def load_processed_ids():
-    if os.path.exists(PROCESSED_IDS_FILE):
-        with open(PROCESSED_IDS_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
+def load_last_timestamp():
+    if os.path.exists(LAST_TS_FILE):
+        with open(LAST_TS_FILE, "r") as f:
+            return f.read().strip()
+    return None
 
 
-def save_processed_ids(data):
-    with open(PROCESSED_IDS_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+def save_last_timestamp(ts):
+    with open(LAST_TS_FILE, "w") as f:
+        f.write(str(ts))
 
 
 # ── Gmail ──
@@ -114,29 +113,23 @@ def get_body_text(payload, max_chars=500):
     return ""
 
 
-def fetch_new_emails(service, account_name, processed_ids):
-    """✅ラベルなし かつ 未処理のメールを取得する"""
-    label_map  = get_label_ids(service, [SKIP_LABEL])
+def fetch_new_emails(service, after_epoch):
+    """✅ラベルなし かつ after_epoch以降のメールを取得する"""
+    label_map     = get_label_ids(service, [SKIP_LABEL])
     skip_label_id = label_map.get(SKIP_LABEL)
 
-    # INBOXの最新20件を取得
-    res      = service.users().messages().list(userId="me", labelIds=["INBOX"], maxResults=20).execute()
+    # after_epoch以降のINBOXメールを取得
+    query = f"in:inbox after:{int(after_epoch)}"
+    res      = service.users().messages().list(userId="me", q=query, maxResults=20).execute()
     messages = res.get("messages", [])
 
-    account_processed = set(processed_ids.get(account_name, []))
     new_emails = []
-
     for m in messages:
-        msg_id = m["id"]
-        if msg_id in account_processed:
-            continue
-
-        detail  = service.users().messages().get(userId="me", id=msg_id, format="full").execute()
+        detail           = service.users().messages().get(userId="me", id=m["id"], format="full").execute()
         label_ids_on_msg = detail.get("labelIds", [])
 
         # ✅ラベルが付いていたらスキップ
         if skip_label_id and skip_label_id in label_ids_on_msg:
-            account_processed.add(msg_id)
             continue
 
         headers  = detail.get("payload", {}).get("headers", [])
@@ -146,15 +139,12 @@ def fetch_new_emails(service, account_name, processed_ids):
         body     = get_body_text(detail.get("payload", {}))
 
         new_emails.append({
-            "id":      msg_id,
             "subject": subject,
             "from":    from_,
             "date":    date_str,
             "body":    body,
         })
-        account_processed.add(msg_id)
 
-    processed_ids[account_name] = list(account_processed)
     return new_emails
 
 
@@ -191,8 +181,16 @@ def main():
         print("エラー: SLACK_BOT_TOKEN が未設定です")
         return
 
-    slack         = WebClient(token=SLACK_BOT_TOKEN)
-    processed_ids = load_processed_ids()
+    slack    = WebClient(token=SLACK_BOT_TOKEN)
+    now_ts   = datetime.datetime.now(tz=ZoneInfo("Asia/Tokyo")).timestamp()
+    last_ts  = load_last_timestamp()
+
+    if not last_ts:
+        print("前回の記録が見つからないため、これ以降の投稿のみを対象にします")
+        save_last_timestamp(now_ts)
+        return
+
+    after_epoch = float(last_ts)
 
     for account in ACCOUNTS:
         name          = account["name"]
@@ -205,7 +203,7 @@ def main():
         print(f"[{name}] チェック中...")
         try:
             service    = get_gmail_service(refresh_token)
-            new_emails = fetch_new_emails(service, name, processed_ids)
+            new_emails = fetch_new_emails(service, after_epoch)
 
             if not new_emails:
                 print(f"  → 新着なし")
@@ -217,7 +215,7 @@ def main():
         except Exception as e:
             print(f"  → エラー: {e}")
 
-    save_processed_ids(processed_ids)
+    save_last_timestamp(now_ts)
     print("完了！")
 
 
