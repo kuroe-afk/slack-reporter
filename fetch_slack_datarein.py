@@ -282,12 +282,14 @@ def extract_hojin_info(text):
     return body
 
 
-def post_shiryo_to_notify(client, msg, poster_name, hojin_body):
+def post_shiryo_to_notify(client, msg, poster_name, hojin_body, sheet_status):
+    check_label = "✅ スプシ登録済み" if sheet_status == "registered" else "⚠️ スプシ未登録（要確認）"
     text = (
         f"{SLACK_MENTION}\n"
         f"*【元チャンネル】* #{SOURCE_CHANNEL_NAME}　"
         f"*【投稿日時】* {msg['投稿日時']}　"
-        f"*【投稿者】* {poster_name}\n"
+        f"*【投稿者】* {poster_name}　"
+        f"*【スプシ照合】* {check_label}\n"
         f"{'─' * 40}\n"
         f"@鈴木健斗 様\n"
         f"お世話になっております。\n"
@@ -383,7 +385,7 @@ def main():
                         print(f"  → Gmail下書き作成失敗: {e}")
                     print(f"  → 【資料】Gmail下書き作成: {company} / {person} / To:{to_email}")
                     hojin_body = extract_hojin_info(text)
-                    post_shiryo_to_notify(slack, msg, poster_name, hojin_body)
+                    post_shiryo_to_notify(slack, msg, poster_name, hojin_body, status)
                     post_thread_reply(slack, msg["タイムスタンプ"], status, draft_status)
 
                 elif "【アポ" in text:
