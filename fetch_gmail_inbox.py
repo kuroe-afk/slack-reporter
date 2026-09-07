@@ -166,7 +166,9 @@ def post_to_slack(slack, account_name, email):
     if len(body_preview) > 400:
         body_preview = body_preview[:400] + "…"
 
+    slack_mention = os.getenv("SLACK_MENTION", "")
     text = (
+        f"{slack_mention}\n"
         f":email: *新着メール通知*\n"
         f"*【受信アカウント】* {account_name}\n"
         f"*【送信者】* {email['from']}\n"
