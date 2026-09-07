@@ -437,9 +437,22 @@ def update_existing_rows(client, ss):
                 ws.update_cell(i, COL_PROGRESS[tab], "")
                 print(f"  → 作業メモクリア: {tab} 行{i}")
 
-            # リマインド: 投稿から3日経過 かつ 条件未達成 かつ 未送信
-            post_dt = datetime.datetime.fromtimestamp(float(ts), tz=ZoneInfo("Asia/Tokyo"))
-            age     = datetime.datetime.now(tz=ZoneInfo("Asia/Tokyo")) - post_dt
+            # リマインド: 3日経過 かつ 条件未達成 かつ 未送信
+            # Tasukaruタブ: H列(index=7)にクライアント依頼日があればその日付を基準にする
+            base_dt = None
+            if tab == TAB_TASUKARU:
+                client_date_str = row[7].strip() if len(row) > 7 else ""
+                if client_date_str:
+                    for fmt in ("%Y/%m/%d", "%Y-%m-%d", "%m/%d/%Y", "%m/%d"):
+                        try:
+                            parsed = datetime.datetime.strptime(client_date_str[:10], fmt)
+                            base_dt = parsed.replace(tzinfo=ZoneInfo("Asia/Tokyo"))
+                            break
+                        except ValueError:
+                            continue
+            if base_dt is None:
+                base_dt = datetime.datetime.fromtimestamp(float(ts), tz=ZoneInfo("Asia/Tokyo"))
+            age = datetime.datetime.now(tz=ZoneInfo("Asia/Tokyo")) - base_dt
             if age.days >= REMINDER_DAYS and needs_reminder(tab, row) and not already_reminded(client, parent_ts):
                 send_reminder(client, parent_ts)
 
