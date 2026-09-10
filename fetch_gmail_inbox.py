@@ -118,8 +118,8 @@ def fetch_new_emails(service, after_epoch):
     label_map     = get_label_ids(service, [SKIP_LABEL])
     skip_label_id = label_map.get(SKIP_LABEL)
 
-    # after_epoch以降のINBOXメールを取得
-    query = f"in:inbox after:{int(after_epoch)}"
+    # after_epoch以降のメインタブのメールのみ取得（プロモーション・ソーシャル・新着を除外）
+    query = f"in:inbox -category:promotions -category:social -category:updates after:{int(after_epoch)}"
     res      = service.users().messages().list(userId="me", q=query, maxResults=20).execute()
     messages = res.get("messages", [])
 
