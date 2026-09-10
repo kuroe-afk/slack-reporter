@@ -44,7 +44,7 @@ SHIRYO_SHEET_LINK   = "https://docs.google.com/spreadsheets/d/1g52sf9OltxFyOQD-I
 
 # ── 資料用Gmail ──
 MAIL_FROM_SHIRYO = "datarein@tasukaru39.com"
-MAIL_CC_SHIRYO   = "info@datarein-ai.com, okanaho@tasukaru39.com"
+MAIL_CC_SHIRYO   = "info@datarein-ai.com, okanaho@tasukaru39.com, fujitasouta@datarein-inc.com"
 SUBJECT_SHIRYO   = "【株式会社DATAREIN】資料送付のご案内"
 
 BODY_SHIRYO = """\
