@@ -161,15 +161,13 @@ def extract_field(text, labels):
 
 
 def extract_name(raw):
-    """性別表記・よみがな・様 を整形して「〇〇 様」形式に"""
-    name = re.sub(r'^(男性|女性)\s*[・･/／]\s*', '', raw)
-    name = re.sub(r'[（(][^）)]*[）)]', '', name)
-    name = name.split('_')[0].strip()
-    name = re.sub(r'[　\s]*[/／・･][　\s]*(男性|女性)\s*$', '', name).strip()
-    name = re.sub(r'[　\s]+(男性|女性)\s*$', '', name).strip()
+    """よみがな・性別・役職等を除去して「〇〇 様」形式に"""
+    # よみがな（括弧内）を除去
+    name = re.sub(r'[（(][^）)]*[）)]', '', raw).strip()
+    # 全角スペース以降（性別・役職等）を切り捨て
+    name = name.split('　')[0].strip()
+    # 様を除去してから付け直す
     name = re.sub(r'\s*様\s*$', '', name).strip()
-    if '様' in name:
-        return name
     return name + ' 様'
 
 
@@ -338,13 +336,6 @@ def main():
         print(f"スプレッドシート読み込みエラー: {e}")
         return
 
-    # Gmail サービス（資料用）
-    try:
-        gmail_datarein = get_gmail_service(REFRESH_TOKEN_DATAREIN)
-    except Exception as e:
-        print(f"Gmail認証エラー: {e}")
-        return
-
     print(f"Slackチャンネル {SLACK_CHANNEL_ID} から取得中...")
     try:
         messages, fetch_ts = fetch_messages(slack)
@@ -372,6 +363,7 @@ def main():
                     body = BODY_SHIRYO.format(company=company, person=person)
                     draft_status = "ok"
                     try:
+                        gmail_datarein = get_gmail_service(REFRESH_TOKEN_DATAREIN)
                         create_gmail_draft(
                             gmail_datarein,
                             sender=MAIL_FROM_SHIRYO,

@@ -75,7 +75,7 @@ def detect_tab(text):
     ))
     if 'sango' in company_norm or 'さんご' in company_norm:
         return TAB_SANGO
-    if 'tasukaru' in company_norm or 'たすかる' in company_norm:
+    if 'tasukaru' in company_norm or 'tasuakru' in company_norm or 'tasu' in company_norm or 'たすかる' in company_norm:
         return TAB_TASUKARU
     return None
 
