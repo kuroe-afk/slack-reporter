@@ -37,6 +37,16 @@ EXPECTED_SPINS  = 20   # 推定月間スピン数（スタッフ約20名）
 DART_TEXT       = "🎯"  # 岡さんがコメントに書くダーツ絵文字
 
 DART_PAGE_URL = "https://claude.ai/artifact/ShjoaytZJzigWQPdj4oRZq"
+
+# 【アポ】自動🎯返信：2ポイントチャンネル
+APO_DOUBLE_CHANNELS = {
+    "C0BDP8Y3N1K",  # sangosama-ai経営技研
+    "C0BLMAYP7KR",  # sangosama-sky-代理店
+    "C06BH8LBUKG",  # sangosama-摩須-謙太郎さま
+    "C0B3SNTRA8J",  # sangosama-cooperative
+    "C08LFP5F7UK",  # sangosama-ターミニックス
+    "C0C1G1YS0ET",  # sango-代理店開拓
+}
 PRIZE_NAME    = f"Amazonギフト券{PRIZE_AMOUNT:,}円"
 
 # 他スタッフのリアクションを監視するチャンネル（必要に応じて追加）
@@ -556,6 +566,46 @@ def fetch_roulette_requests(client, after_ts):
     return requests
 
 
+# ── 【アポ】自動🎯返信 ───────────────────────────
+
+def fetch_and_reply_apo(client, nahooka_client, processed_keys, after_ts):
+    """【アポ で始まる投稿を検知してnahookaが🎯返信する"""
+    channels = get_bot_channels(client)
+    new_keys = []
+    for ch in channels:
+        try:
+            res  = client.conversations_history(channel=ch, limit=200, oldest=after_ts)
+            msgs = res.get("messages", [])
+        except SlackApiError as e:
+            print(f"  → 履歴取得失敗({ch}): {e.response.get('error')}")
+            continue
+        for msg in msgs:
+            text   = msg.get("text", "")
+            sender = msg.get("user", "")
+            ts     = msg.get("ts", "")
+            if not text.startswith("【アポ"):
+                continue
+            if not sender or sender == OKA_USER_ID:
+                continue
+            key = f"apo_{ch}_{ts}"
+            if key in processed_keys:
+                continue
+            dart_count = 2 if ch in APO_DOUBLE_CHANNELS else 1
+            darts      = DART_TEXT * dart_count
+            reply_text = f"<@{sender}> ありがとうございます{darts}"
+            try:
+                nahooka_client.chat_postMessage(
+                    channel=ch,
+                    text=reply_text,
+                    thread_ts=ts,
+                )
+                print(f"  → 【アポ】返信: {ch} / {dart_count}pt / {sender}")
+                new_keys.append(key)
+            except SlackApiError as e:
+                print(f"  → 【アポ】返信失敗({ch}): {e.response.get('error')}")
+    return new_keys
+
+
 # ── タイムスタンプ管理 ────────────────────────────
 
 def load_last_ts():
@@ -624,6 +674,11 @@ def main():
     for r in staff_gifts:
         process_point(client, nahooka_client, ss, r["from_user"], r["to_user"], is_official=False)
         new_keys.append(r["key"])
+
+    # ── 【アポ】自動🎯返信 ──
+    print("【アポ】投稿を確認中...")
+    apo_keys = fetch_and_reply_apo(client, nahooka_client, processed_keys, last_ts)
+    new_keys.extend(apo_keys)
 
     # ── 処理済みキーを保存 ──
     if new_keys:
