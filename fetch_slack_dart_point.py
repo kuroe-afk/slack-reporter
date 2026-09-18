@@ -22,7 +22,8 @@ from google.oauth2.service_account import Credentials
 
 load_dotenv()
 
-SLACK_BOT_TOKEN  = os.getenv("SLACK_BOT_TOKEN")
+SLACK_BOT_TOKEN         = os.getenv("SLACK_BOT_TOKEN")
+NAHOOKA_BOT_TOKEN       = os.getenv("NAHOOKA_BOT_TOKEN")
 OKA_USER_ID      = "U02KSNGJJ4C"    # 岡さん（公式ポイント付与者）
 GENERAL_CHANNEL  = "C02KQG6HGCA"    # general
 DART_EMOJI       = "dart"
@@ -207,7 +208,7 @@ def notify_general_10pt(client, user_id):
 
 # ── ポイント処理 ─────────────────────────────────
 
-def process_point(client, ss, from_user_id, to_user_id, is_official):
+def process_point(client, nahooka_client, ss, from_user_id, to_user_id, is_official):
     """
     🎯リアクション1件を処理する
     is_official=True  → 岡さんからの公式付与
@@ -228,7 +229,7 @@ def process_point(client, ss, from_user_id, to_user_id, is_official):
         from_pts = _int(from_row[C_PTS] if len(from_row) > C_PTS else 0)
         if from_pts <= 0:
             print(f"  → 贈与失敗: {from_name} のポイント不足({from_pts}pt)")
-            send_dm(client, from_user_id,
+            send_dm(nahooka_client, from_user_id,
                     f"😢 ポイントが不足しているため贈与できませんでした。\n"
                     f"現在のポイント：★ *{from_pts}pt*")
             return None
@@ -277,18 +278,18 @@ def process_point(client, ss, from_user_id, to_user_id, is_official):
         dm += f"🎰 *{POINTS_TO_SPIN}ポイント達成！* generalチャンネルをご確認ください 🎉"
     else:
         dm += f"ルーレットまであと *{remain}ポイント* です 💪"
-    send_dm(client, to_user_id, dm)
+    send_dm(nahooka_client, to_user_id, dm)
 
     # ── 10ポイント達成通知 ──
     if new_pts >= POINTS_TO_SPIN and to_pts < POINTS_TO_SPIN:
-        notify_general_10pt(client, to_user_id)
+        notify_general_10pt(nahooka_client, to_user_id)
 
     return new_pts
 
 
 # ── ルーレット処理 ────────────────────────────────
 
-def process_roulette(client, ss, user_id, thread_ts):
+def process_roulette(client, nahooka_client, ss, user_id, thread_ts):
     """ルーレットを実行する"""
     ws_pts  = ss.worksheet(SHEET_POINTS)
     ws_hist = ss.worksheet(SHEET_HISTORY)
@@ -304,7 +305,7 @@ def process_roulette(client, ss, user_id, thread_ts):
     # ── ポイント確認 ──
     if cur_pts < POINTS_TO_SPIN:
         try:
-            client.chat_postMessage(
+            nahooka_client.chat_postMessage(
                 channel=GENERAL_CHANNEL,
                 text=(f"😢 <@{user_id}> さん、ポイントが不足しています。\n"
                       f"現在：*{cur_pts}pt* / 必要：*{POINTS_TO_SPIN}pt*"),
@@ -318,7 +319,7 @@ def process_roulette(client, ss, user_id, thread_ts):
     cm = current_month()
     if lspin == cm:
         try:
-            client.chat_postMessage(
+            nahooka_client.chat_postMessage(
                 channel=GENERAL_CHANNEL,
                 text=f"😊 <@{user_id}> さん、今月はすでにルーレットを使用済みです。\n来月またチャレンジしてください 🌸",
                 thread_ts=thread_ts,
@@ -375,7 +376,7 @@ def process_roulette(client, ss, user_id, thread_ts):
         )
 
     try:
-        client.chat_postMessage(
+        nahooka_client.chat_postMessage(
             channel=GENERAL_CHANNEL,
             text=msg,
             thread_ts=thread_ts,
@@ -385,12 +386,12 @@ def process_roulette(client, ss, user_id, thread_ts):
 
     # 当選の場合はDMにも通知
     if won:
-        send_dm(client, user_id,
+        send_dm(nahooka_client, user_id,
                 f"🎊 *おめでとうございます！*\n"
                 f"{PRIZE_NAME} に当選しました！\n"
                 f"岡さんへご連絡ください 🙌")
         # 岡さんにも当選者を通知
-        send_dm(client, OKA_USER_ID,
+        send_dm(nahooka_client, OKA_USER_ID,
                 f"🎯 *ルーレット当選のお知らせ*\n"
                 f"{user_name} さんが {PRIZE_NAME} に当選しました！\n"
                 f"Amazonギフト券の送付をお願いします 🎁")
@@ -574,11 +575,15 @@ def main():
     if not SLACK_BOT_TOKEN:
         print("エラー: SLACK_BOT_TOKEN が未設定です")
         return
+    if not NAHOOKA_BOT_TOKEN:
+        print("エラー: NAHOOKA_BOT_TOKEN が未設定です")
+        return
     if not SPREADSHEET_ID:
         print("エラー: DART_POINT_SPREADSHEET_ID が未設定です")
         return
 
-    client = WebClient(token=SLACK_BOT_TOKEN)
+    client         = WebClient(token=SLACK_BOT_TOKEN)   # 既存bot（チャンネル監視用）
+    nahooka_client = WebClient(token=NAHOOKA_BOT_TOKEN) # nahooka bot（通知・DM送信用）
 
     print("スプレッドシートを開いています...")
     try:
@@ -609,7 +614,7 @@ def main():
     oka_replies = fetch_oka_dart_replies(client, processed_keys, last_ts)
     print(f"  → {len(oka_replies)} 件（未処理）")
     for r in oka_replies:
-        process_point(client, ss, r["from_user"], r["to_user"], is_official=True)
+        process_point(client, nahooka_client, ss, r["from_user"], r["to_user"], is_official=True)
         new_keys.append(r["key"])
 
     # ── スタッフ間🎯メンション贈与処理 ──
@@ -617,7 +622,7 @@ def main():
     staff_gifts = fetch_staff_dart_mentions(client, processed_keys, last_ts)
     print(f"  → {len(staff_gifts)} 件（未処理）")
     for r in staff_gifts:
-        process_point(client, ss, r["from_user"], r["to_user"], is_official=False)
+        process_point(client, nahooka_client, ss, r["from_user"], r["to_user"], is_official=False)
         new_keys.append(r["key"])
 
     # ── 処理済みキーを保存 ──
@@ -630,7 +635,7 @@ def main():
     print(f"  → {len(roulette_reqs)} 件")
     for req in roulette_reqs:
         if req["user_id"]:
-            process_roulette(client, ss, req["user_id"], req["thread_ts"])
+            process_roulette(client, nahooka_client, ss, req["user_id"], req["thread_ts"])
 
     save_last_ts(fetch_ts)
     print("完了！")

@@ -69,6 +69,7 @@ jobs:
           echo "GMAIL_REFRESH_TOKEN_SANGO_OKA=${{ secrets.GMAIL_REFRESH_TOKEN_SANGO_OKA }}" >> .env
           echo "IREIZHONS_SPREADSHEET_ID=${{ secrets.IREIZHONS_SPREADSHEET_ID }}" >> .env
           echo "DART_POINT_SPREADSHEET_ID=${{ secrets.DART_POINT_SPREADSHEET_ID }}" >> .env
+          echo "NAHOOKA_BOT_TOKEN=${{ secrets.NAHOOKA_BOT_TOKEN }}" >> .env
 
       - name: credentials.jsonを作成
         run: echo '${{ secrets.GOOGLE_CREDENTIALS_JSON }}' > credentials.json
