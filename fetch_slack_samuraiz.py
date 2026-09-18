@@ -436,7 +436,8 @@ def main():
                     )
                 elif "【資料依頼" in text:
                     company   = extract_field(text, "企業名") or "（会社名）"
-                    person    = extract_field(text, "氏名") or "（担当者名）"
+                    _raw_person = extract_field(text, "氏名") or ""
+                    person    = re.sub(r'[（(].*', '', _raw_person).strip() or "（担当者名）"
                     to_email  = extract_field(text, "e-mail") or ""
                     list_type = sheet_rec["リスト"] if sheet_rec else ""
 
