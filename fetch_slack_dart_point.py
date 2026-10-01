@@ -11,6 +11,7 @@
 """
 
 import os
+import re
 import random
 import datetime
 from zoneinfo import ZoneInfo
@@ -583,7 +584,9 @@ def fetch_and_reply_apo(client, nahooka_client, processed_keys, after_ts):
             text   = msg.get("text", "")
             sender = msg.get("user", "")
             ts     = msg.get("ts", "")
-            if not text.startswith("【アポ"):
+            # 先頭のSlackメンション（<@U...> <!subteam^...> など）を取り除いてからチェック
+            stripped = re.sub(r'^(<[@!][^>]+>\s*)+', '', text).strip()
+            if not stripped.startswith("【アポ"):
                 continue
             if not sender or sender == OKA_USER_ID:
                 continue
