@@ -571,6 +571,7 @@ def fetch_roulette_requests(client, after_ts):
 def fetch_and_reply_apo(client, nahooka_client, processed_keys, after_ts):
     """【アポ で始まる投稿を検知してnahookaが🎯返信する"""
     channels = get_bot_channels(client)
+    print(f"  → {len(channels)} チャンネルをスキャン")
     new_keys = []
     for ch in channels:
         try:
@@ -585,6 +586,7 @@ def fetch_and_reply_apo(client, nahooka_client, processed_keys, after_ts):
             ts     = msg.get("ts", "")
             if not text.startswith("【アポ"):
                 continue
+            print(f"  → 【アポ】検知: ch={ch} sender={sender} text={text[:30]}")
             if not sender or sender == OKA_USER_ID:
                 continue
             key = f"apo_{ch}_{ts}"
