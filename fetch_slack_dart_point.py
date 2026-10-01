@@ -570,9 +570,11 @@ def fetch_roulette_requests(client, after_ts):
 # ── 【アポ】自動🎯返信 ───────────────────────────
 
 def fetch_and_reply_apo(client, nahooka_client, processed_keys, after_ts):
-    """【アポ で始まる投稿を検知してnahookaが🎯返信する"""
+    """【アポ で始まる投稿を検知してnahookaが🎯返信する
+    戻り値: [{"key": ..., "sender": ..., "dart_count": ...}, ...]
+    """
     channels = get_bot_channels(client)
-    new_keys = []
+    results  = []
     for ch in channels:
         try:
             res  = client.conversations_history(channel=ch, limit=200, oldest=after_ts)
@@ -603,10 +605,10 @@ def fetch_and_reply_apo(client, nahooka_client, processed_keys, after_ts):
                     thread_ts=ts,
                 )
                 print(f"  → 【アポ】返信: {ch} / {dart_count}pt / {sender}")
-                new_keys.append(key)
+                results.append({"key": key, "sender": sender, "dart_count": dart_count})
             except SlackApiError as e:
                 print(f"  → 【アポ】返信失敗({ch}): {e.response.get('error')}")
-    return new_keys
+    return results
 
 
 # ── タイムスタンプ管理 ────────────────────────────
@@ -678,10 +680,13 @@ def main():
         process_point(client, nahooka_client, ss, r["from_user"], r["to_user"], is_official=False)
         new_keys.append(r["key"])
 
-    # ── 【アポ】自動🎯返信 ──
+    # ── 【アポ】自動🎯返信 + ポイント付与 ──
     print("【アポ】投稿を確認中...")
-    apo_keys = fetch_and_reply_apo(client, nahooka_client, processed_keys, last_ts)
-    new_keys.extend(apo_keys)
+    apo_results = fetch_and_reply_apo(client, nahooka_client, processed_keys, last_ts)
+    for r in apo_results:
+        for _ in range(r["dart_count"]):
+            process_point(client, nahooka_client, ss, OKA_USER_ID, r["sender"], is_official=True)
+        new_keys.append(r["key"])
 
     # ── 処理済みキーを保存 ──
     if new_keys:
