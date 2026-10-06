@@ -543,15 +543,19 @@ def fetch_staff_dart_mentions(client, processed_keys, after_ts):
 
 
 def fetch_roulette_requests(client, after_ts):
-    """generalチャンネルのスレッドから【ルーレット】を検知"""
+    """generalチャンネルのスレッドから【ルーレット】を検知
+    親メッセージはafter_tsより古い場合があるため、直近50件を対象にする
+    """
     requests = []
     try:
-        res  = client.conversations_history(channel=GENERAL_CHANNEL, limit=50, oldest=after_ts)
+        # oldest を指定しない（親メッセージが古くても拾えるよう直近50件を取得）
+        res  = client.conversations_history(channel=GENERAL_CHANNEL, limit=50)
         msgs = res.get("messages", [])
         for msg in msgs:
             parent_ts = msg.get("ts", "")
             if int(msg.get("reply_count", 0)) == 0:
                 continue
+            # 返信側は after_ts 以降のみチェック
             rep = client.conversations_replies(
                 channel=GENERAL_CHANNEL, ts=parent_ts, oldest=after_ts)
             for reply in rep.get("messages", []):
