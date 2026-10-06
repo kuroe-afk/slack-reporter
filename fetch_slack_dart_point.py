@@ -371,18 +371,19 @@ def process_roulette(client, nahooka_client, ss, user_id, thread_ts):
     dart_url     = f"{DART_PAGE_URL}?result={result_param}&name={name_enc}&prize={prize_enc}"
 
     # ── Slackに投稿 ──
+    dart_link = f"<{dart_url}|🎯 ダーツを投げる>"
     if won:
         msg = (
             f"🎯 <@{user_id}> さん、準備ができました！\n"
             f"下のリンクからダーツを投げてみよう 🎰✨\n"
-            f"{dart_url}\n\n"
+            f"{dart_link}\n\n"
             f"残りポイント：★ *{new_pts}pt*"
         )
     else:
         msg = (
             f"🎯 <@{user_id}> さん、準備ができました！\n"
             f"下のリンクからダーツを投げてみよう 🍀\n"
-            f"{dart_url}\n\n"
+            f"{dart_link}\n\n"
             f"残りポイント：★ *{new_pts}pt*"
         )
 
