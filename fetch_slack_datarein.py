@@ -27,8 +27,9 @@ SLACK_BOT_TOKEN      = os.getenv("SLACK_BOT_TOKEN")
 SLACK_CHANNEL_ID     = "C0BP0UGLFEH"   # datarein
 SLACK_NOTIFY_CHANNEL = "C0BC7SYFP36"   # クライアント報告用--下書き--
 
-SPREADSHEET_ID   = "1g52sf9OltxFyOQD-IOE4WdkT45bLZW5EeMFqOl6MgnE"
-CREDENTIALS_FILE = "credentials.json"
+SPREADSHEET_ID          = "1g52sf9OltxFyOQD-IOE4WdkT45bLZW5EeMFqOl6MgnE"
+SPREADSHEET_ID_SECURITY = "1OLJNwewnlDhIYA0FKfIfSvDBX9sXQwrVBn0050Cs3bw"
+CREDENTIALS_FILE        = "credentials.json"
 
 SLACK_MENTION        = os.getenv("SLACK_MENTION", "")
 
@@ -58,6 +59,31 @@ BODY_SHIRYO = """\
 ご案内させていただきました資料をお送りいたします。
 
 【資料】  https://x.gd/9nue4
+
+ご不明な点などございましたら、本メールの返信にて鈴木までお問い合わせください。
+ご確認のほど、よろしくお願いいたします。
+
+--------------------------------------------------------------------------------
+株式会社DATAREIN　事務センター
+メールアドレス：datarein@tasukaru39.com
+--------------------------------------------------------------------------------"""
+
+# セキュリティ案件用（資料リンクが異なる）
+BODY_SHIRYO_SECURITY = """\
+{company}
+{person}
+
+お世話になっております。
+株式会社DATAREINの鈴木でございます。
+
+この度は弊社からお電話させていただきありがとうございます。
+ご案内させていただきました資料をお送りいたします。
+
+【資料Ⅰ】
+https://x.gd/v0XsA
+
+【資料Ⅱ】
+https://x.gd/amf99
 
 ご不明な点などございましたら、本メールの返信にて鈴木までお問い合わせください。
 ご確認のほど、よろしくお願いいたします。
@@ -114,11 +140,11 @@ def create_gmail_draft(service, sender, to, cc, subject, body):
 
 # ── スプレッドシート ──
 
-def open_spreadsheet():
+def open_spreadsheet(spreadsheet_id=None):
     scopes = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
     creds  = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=scopes)
     gc     = gspread.authorize(creds)
-    return gc.open_by_key(SPREADSHEET_ID)
+    return gc.open_by_key(spreadsheet_id or SPREADSHEET_ID)
 
 
 def load_sheet(ss, sheet_name, company_col, person_col, email_col):
@@ -336,6 +362,17 @@ def main():
         print(f"スプレッドシート読み込みエラー: {e}")
         return
 
+    print("セキュリティ用スプレッドシートを読み込み中...")
+    try:
+        ss_sec             = open_spreadsheet(SPREADSHEET_ID_SECURITY)
+        apo_records_sec    = load_sheet(ss_sec, "アポイント取得企業", company_col=4, person_col=6, email_col=9)
+        mikomi_records_sec = load_sheet(ss_sec, "見込み企業",         company_col=4, person_col=5, email_col=8)
+        shiryo_records_sec = load_sheet(ss_sec, "資料送付",           company_col=4, person_col=6, email_col=9)
+        print(f"  → アポ:{len(apo_records_sec)}件 / 見込み:{len(mikomi_records_sec)}件 / 資料:{len(shiryo_records_sec)}件")
+    except Exception as e:
+        print(f"セキュリティ用スプレッドシート読み込みエラー: {e}")
+        apo_records_sec = mikomi_records_sec = shiryo_records_sec = []
+
     print(f"Slackチャンネル {SLACK_CHANNEL_ID} から取得中...")
     try:
         messages, fetch_ts = fetch_messages(slack)
@@ -349,18 +386,21 @@ def main():
         for msg in filtered:
             text        = msg["本文"]
             poster_name = fetch_user_name(slack, msg["投稿者ID"])
+            is_security = "セキュリティ" in text
 
             try:
                 if "【資料" in text:
-                    match = check_in_sheet(shiryo_records, text)
-                    status = "registered" if match else "unregistered"
+                    records = shiryo_records_sec if is_security else shiryo_records
+                    match   = check_in_sheet(records, text)
+                    status  = "registered" if match else "unregistered"
 
                     company    = extract_field(text, ["企業名", "会社名", "社名"]) or "（会社名）"
                     raw_person = extract_field(text, ["氏名", "担当者名", "担当者"])
                     person     = extract_name(raw_person) if raw_person else "（担当者名）"
                     to_email   = extract_field(text, ["e-mail", "mail", "メール", "Email"]) or ""
 
-                    body = BODY_SHIRYO.format(company=company, person=person)
+                    body_template = BODY_SHIRYO_SECURITY if is_security else BODY_SHIRYO
+                    body = body_template.format(company=company, person=person)
                     draft_status = "ok"
                     try:
                         gmail_datarein = get_gmail_service(REFRESH_TOKEN_DATAREIN)
@@ -381,16 +421,18 @@ def main():
                     post_thread_reply(slack, msg["タイムスタンプ"], status, draft_status)
 
                 elif "【アポ" in text:
-                    match = check_in_sheet(apo_records, text)
-                    status = "registered" if match else "unregistered"
+                    records = apo_records_sec if is_security else apo_records
+                    match   = check_in_sheet(records, text)
+                    status  = "registered" if match else "unregistered"
                     body = clean_slack_text(extract_body(text, "【アポ"))
                     draft_text = TEMPLATE_APO.format(body=body)
                     post_to_slack(slack, msg, status, poster_name, draft_text)
                     print(f"  → 【アポ】Slack下書き投稿")
 
                 elif "【見込み" in text:
-                    match = check_in_sheet(mikomi_records, text)
-                    status = "registered" if match else "unregistered"
+                    records = mikomi_records_sec if is_security else mikomi_records
+                    match   = check_in_sheet(records, text)
+                    status  = "registered" if match else "unregistered"
                     body = clean_slack_text(extract_body(text, "【見込み"))
                     draft_text = TEMPLATE_MIKOMI.format(body=body)
                     post_to_slack(slack, msg, status, poster_name, draft_text)
