@@ -21,7 +21,7 @@ SLACK_NOTIFY_CHANNEL = os.getenv("SLACK_NOTIFY_CHANNEL_ID")
 SLACK_MENTION        = os.getenv("SLACK_MENTION", "")
 
 SPREADSHEET_ID   = os.getenv("TOSWORKS_SPREADSHEET_ID",
-                              "18JxXXPi6gfobOMvJKc5Q8wA9B9gJImrSK0HPgszLBA8")
+                              "1qFWzzvcmYJSc4JBx-Qmen-mcOCdS3tJ4ExWDuijaz68")
 CREDENTIALS_FILE = "credentials.json"
 
 KEYWORDS = ["【アポ", "【見込み", "【資料"]
