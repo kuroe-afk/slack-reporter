@@ -396,13 +396,8 @@ def process_roulette(client, nahooka_client, ss, user_id, thread_ts):
     except SlackApiError as e:
         print(f"  → ルーレット結果投稿失敗: {e.response.get('error')}")
 
-    # 当選の場合はDMにも通知
+    # 当選の場合は岡さんにDM通知
     if won:
-        send_dm(nahooka_client, user_id,
-                f"🎊 *おめでとうございます！*\n"
-                f"{PRIZE_NAME} に当選しました！\n"
-                f"岡さんへご連絡ください 🙌")
-        # 岡さんにも当選者を通知
         send_dm(nahooka_client, OKA_USER_ID,
                 f"🎯 *ルーレット当選のお知らせ*\n"
                 f"{user_name} さんが {PRIZE_NAME} に当選しました！\n"
