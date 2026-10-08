@@ -304,15 +304,6 @@ def main():
         print(f"スプレッドシートエラー: {e}")
         return
 
-    print("Gmailに接続中...")
-    try:
-        gmail_jimucenter = get_gmail_service(REFRESH_TOKEN_JIMUCENTER)
-        gmail_mirai       = get_gmail_service(REFRESH_TOKEN_MIRAI)
-        print("  → 接続成功")
-    except Exception as e:
-        print(f"Gmailエラー: {e}")
-        return
-
     print(f"Slackチャンネル {SLACK_CHANNEL_ID} から取得中...")
     try:
         messages, fetch_ts = fetch_messages(slack)
@@ -322,6 +313,22 @@ def main():
             print("新着の対象投稿はありませんでした。")
             save_last_timestamp(fetch_ts)
             return
+
+        # 必要なGmailサービスだけ接続する
+        needs_jimucenter = any("【アポ" in m["本文"] or "【見込み" in m["本文"] for m in filtered)
+        needs_mirai      = any("【資料" in m["本文"] for m in filtered)
+
+        gmail_jimucenter = gmail_mirai = None
+        if needs_jimucenter:
+            try:
+                gmail_jimucenter = get_gmail_service(REFRESH_TOKEN_JIMUCENTER)
+            except Exception as e:
+                print(f"  → jimucenter Gmail接続失敗: {e}")
+        if needs_mirai:
+            try:
+                gmail_mirai = get_gmail_service(REFRESH_TOKEN_MIRAI)
+            except Exception as e:
+                print(f"  → mirai Gmail接続失敗: {e}")
 
         for msg in filtered:
             text    = msg["本文"]
@@ -333,28 +340,37 @@ def main():
             try:
                 if "【アポ" in text:
                     sheet_rec = check_in_sheet(apo_records, text)
-                    body_text = clean_slack_text(text[text.find("【アポ"):].strip())
-                    create_draft(
-                        gmail_jimucenter, MAIL_FROM_APO_MIKOMI, MAIL_TO_APO_MIKOMI, MAIL_CC_APO_MIKOMI,
-                        SUBJECT_APO, BODY_APO.format(body=body_text)
-                    )
+                    if gmail_jimucenter:
+                        body_text = clean_slack_text(text[text.find("【アポ"):].strip())
+                        create_draft(
+                            gmail_jimucenter, MAIL_FROM_APO_MIKOMI, MAIL_TO_APO_MIKOMI, MAIL_CC_APO_MIKOMI,
+                            SUBJECT_APO, BODY_APO.format(body=body_text)
+                        )
+                    else:
+                        draft_status = "error"
                 elif "【資料" in text:
                     sheet_rec  = check_in_sheet(shiryo_records, text)
-                    company    = extract_field(text, ["企業名", "会社名", "社名"]) or "（会社名）"
-                    raw_person = extract_field(text, ["氏名", "担当者名", "担当者"])
-                    person     = extract_name(raw_person) if raw_person else "（担当者名）"
-                    to_email   = extract_field(text, ["e-mail", "mail", "メール"]) or ""
-                    create_draft(
-                        gmail_mirai, MAIL_FROM_SHIRYO, to_email, MAIL_CC_SHIRYO,
-                        SUBJECT_SHIRYO, BODY_SHIRYO.format(company=company, person=person)
-                    )
+                    if gmail_mirai:
+                        company    = extract_field(text, ["企業名", "会社名", "社名"]) or "（会社名）"
+                        raw_person = extract_field(text, ["氏名", "担当者名", "担当者"])
+                        person     = extract_name(raw_person) if raw_person else "（担当者名）"
+                        to_email   = extract_field(text, ["e-mail", "mail", "メール"]) or ""
+                        create_draft(
+                            gmail_mirai, MAIL_FROM_SHIRYO, to_email, MAIL_CC_SHIRYO,
+                            SUBJECT_SHIRYO, BODY_SHIRYO.format(company=company, person=person)
+                        )
+                    else:
+                        draft_status = "error"
                 elif "【見込み" in text:
                     sheet_rec = check_in_sheet(mikomi_records, text)
-                    body_text = clean_slack_text(text[text.find("【見込み"):].strip())
-                    create_draft(
-                        gmail_jimucenter, MAIL_FROM_APO_MIKOMI, MAIL_TO_APO_MIKOMI, MAIL_CC_APO_MIKOMI,
-                        SUBJECT_MIKOMI, BODY_MIKOMI.format(body=body_text)
-                    )
+                    if gmail_jimucenter:
+                        body_text = clean_slack_text(text[text.find("【見込み"):].strip())
+                        create_draft(
+                            gmail_jimucenter, MAIL_FROM_APO_MIKOMI, MAIL_TO_APO_MIKOMI, MAIL_CC_APO_MIKOMI,
+                            SUBJECT_MIKOMI, BODY_MIKOMI.format(body=body_text)
+                        )
+                    else:
+                        draft_status = "error"
             except Exception as e:
                 print(f"  → 下書き作成失敗: {e}")
                 draft_status = "error"
