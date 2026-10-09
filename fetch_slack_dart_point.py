@@ -371,7 +371,7 @@ def process_roulette(client, nahooka_client, ss, user_id, thread_ts):
     result_param = "win" if won else "lose"
     name_enc     = urllib.parse.quote(user_name)
     prize_enc    = urllib.parse.quote(PRIZE_NAME)
-    dart_url     = f"{DART_PAGE_URL}?result={result_param}&name={name_enc}&prize={prize_enc}"
+    dart_url     = f"{DART_PAGE_URL}#result={result_param}&name={name_enc}&prize={prize_enc}"
 
     # ── Slackに投稿 ──
     dart_link = f"<{dart_url}|🎯 ダーツを投げる>"
