@@ -14,6 +14,7 @@ import os
 import re
 import random
 import datetime
+import time
 from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 from slack_sdk import WebClient
@@ -566,6 +567,7 @@ def process_manual_darts(client, nahooka_client, ss):
         print(f"  → 手動ダーツ: {to_user} に {dart_count} 本")
         for _ in range(dart_count):
             process_point(client, nahooka_client, ss, OKA_USER_ID, to_user, is_official=True)
+            time.sleep(3)  # Sheets API quota対策
 
         ws.update_cell(i, 3, jst_now)
 
