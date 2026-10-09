@@ -51,12 +51,14 @@ APO_DOUBLE_CHANNELS = {
 PRIZE_NAME    = f"Amazonギフト券{PRIZE_AMOUNT:,}円"
 
 # 他スタッフのリアクションを監視するチャンネル（必要に応じて追加）
-MONITOR_CHANNELS = [GENERAL_CHANNEL]
+MONITOR_CHANNELS = [GENERAL_CHANNEL, DART_CHANNEL]
 
 SPREADSHEET_ID   = os.getenv("DART_POINT_SPREADSHEET_ID",
                               "15XHLNuRfobSTKay_qlNqS1rdG6e83-bWCt26Gjx5zD0")
 CREDENTIALS_FILE = "credentials.json"
 LAST_TS_FILE     = "last_timestamp_dart_point.txt"
+
+DART_CHANNEL    = "C0C8SECU5DE"  # ダーツチャンネル（ポイント通知先）
 
 SHEET_POINTS    = "ポイント管理"
 SHEET_HISTORY   = "履歴"
@@ -202,7 +204,7 @@ def send_dm(client, user_id, text):
 
 
 def notify_general_10pt(client, user_id):
-    """10ポイント達成をgeneralに通知"""
+    """10ポイント達成をダーツチャンネルに通知"""
     text = (
         f"🎯✨ おめでとうございます！<@{user_id}> さん 🎉\n"
         f"ついに *10ポイント* 達成です！🏆🎰\n"
@@ -210,10 +212,10 @@ def notify_general_10pt(client, user_id):
         f"Good luck! 🌟"
     )
     try:
-        res = client.chat_postMessage(channel=GENERAL_CHANNEL, text=text)
+        res = client.chat_postMessage(channel=DART_CHANNEL, text=text)
         return res["ts"]
     except SlackApiError as e:
-        print(f"  → general通知失敗: {e.response.get('error')}")
+        print(f"  → ダーツチャンネル通知失敗: {e.response.get('error')}")
         return None
 
 
@@ -286,7 +288,7 @@ def process_point(client, nahooka_client, ss, from_user_id, to_user_id, is_offic
         f"ただいまの合計：★ *{new_pts}ポイント* 🌟\n\n"
     )
     if new_pts >= POINTS_TO_SPIN:
-        dm += f"🎰 *{POINTS_TO_SPIN}ポイント達成！* generalチャンネルをご確認ください 🎉"
+        dm += f"🎰 *{POINTS_TO_SPIN}ポイント達成！* ダーツチャンネルをご確認ください 🎉"
     else:
         dm += f"ルーレットまであと *{remain}ポイント* です 💪"
     send_dm(nahooka_client, to_user_id, dm)
@@ -317,7 +319,7 @@ def process_roulette(client, nahooka_client, ss, user_id, thread_ts):
     if cur_pts < POINTS_TO_SPIN:
         try:
             nahooka_client.chat_postMessage(
-                channel=GENERAL_CHANNEL,
+                channel=DART_CHANNEL,
                 text=(f"😢 <@{user_id}> さん、ポイントが不足しています。\n"
                       f"現在：*{cur_pts}pt* / 必要：*{POINTS_TO_SPIN}pt*"),
                 thread_ts=thread_ts,
@@ -331,7 +333,7 @@ def process_roulette(client, nahooka_client, ss, user_id, thread_ts):
     if lspin == cm:
         try:
             nahooka_client.chat_postMessage(
-                channel=GENERAL_CHANNEL,
+                channel=DART_CHANNEL,
                 text=f"😊 <@{user_id}> さん、今月はすでにルーレットを使用済みです。\n来月またチャレンジしてください 🌸",
                 thread_ts=thread_ts,
             )
@@ -389,7 +391,7 @@ def process_roulette(client, nahooka_client, ss, user_id, thread_ts):
 
     try:
         nahooka_client.chat_postMessage(
-            channel=GENERAL_CHANNEL,
+            channel=DART_CHANNEL,
             text=msg,
             thread_ts=thread_ts,
         )
@@ -538,6 +540,38 @@ def fetch_staff_dart_mentions(client, processed_keys, after_ts):
     return results
 
 
+SHEET_MANUAL_DARTS = "手動ダーツ"
+
+def process_manual_darts(client, nahooka_client, ss):
+    """「手動ダーツ」シートのC列が空の行を処理してポイント付与し、完了日時を書き込む"""
+    try:
+        ws = ss.worksheet(SHEET_MANUAL_DARTS)
+    except Exception as e:
+        print(f"  → 手動ダーツシートが見つかりません: {e}")
+        return
+
+    rows = ws.get_all_values()
+    jst_now = datetime.datetime.now(tz=ZoneInfo("Asia/Tokyo")).strftime("%Y-%m-%d %H:%M:%S")
+
+    for i, row in enumerate(rows[1:], start=2):
+        to_user = row[0].strip() if len(row) > 0 else ""
+        dart_count_raw = row[1].strip() if len(row) > 1 else ""
+        processed = row[2].strip() if len(row) > 2 else ""
+
+        if not to_user or processed:
+            continue
+
+        dart_count = max(1, int(dart_count_raw)) if dart_count_raw.isdigit() else 1
+
+        print(f"  → 手動ダーツ: {to_user} に {dart_count} 本")
+        for _ in range(dart_count):
+            process_point(client, nahooka_client, ss, OKA_USER_ID, to_user, is_official=True)
+
+        ws.update_cell(i, 3, jst_now)
+
+    print("  → 手動ダーツ確認完了")
+
+
 def fetch_roulette_requests(client, after_ts):
     """generalチャンネルのスレッドから【ルーレット】を検知
     親メッセージはafter_tsより古い場合があるため、直近50件を対象にする
@@ -545,7 +579,7 @@ def fetch_roulette_requests(client, after_ts):
     requests = []
     try:
         # oldest を指定しない（親メッセージが古くても拾えるよう直近50件を取得）
-        res  = client.conversations_history(channel=GENERAL_CHANNEL, limit=50)
+        res  = client.conversations_history(channel=DART_CHANNEL, limit=50)
         msgs = res.get("messages", [])
         for msg in msgs:
             parent_ts = msg.get("ts", "")
@@ -553,7 +587,7 @@ def fetch_roulette_requests(client, after_ts):
                 continue
             # 返信側は after_ts 以降のみチェック
             rep = client.conversations_replies(
-                channel=GENERAL_CHANNEL, ts=parent_ts, oldest=after_ts)
+                channel=DART_CHANNEL, ts=parent_ts, oldest=after_ts)
             for reply in rep.get("messages", []):
                 if reply.get("ts") == parent_ts:
                     continue
@@ -691,6 +725,10 @@ def main():
     # ── 処理済みキーを保存 ──
     if new_keys:
         add_processed_keys(ws_proc, new_keys)
+
+    # ── 手動ダーツ処理 ──
+    print("手動ダーツ依頼を確認中...")
+    process_manual_darts(client, nahooka_client, ss)
 
     # ── ルーレット処理 ──
     print("【ルーレット】依頼を確認中...")

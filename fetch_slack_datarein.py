@@ -41,7 +41,8 @@ KEYWORDS     = ["【アポ", "【見込み", "【資料"]
 FETCH_LIMIT  = 50
 LAST_TS_FILE = "last_timestamp_datarein.txt"
 SOURCE_CHANNEL_NAME = "datarein"
-SHIRYO_SHEET_LINK   = "https://docs.google.com/spreadsheets/d/1g52sf9OltxFyOQD-IOE4WdkT45bLZW5EeMFqOl6MgnE/edit?gid=950486788#gid=950486788"
+SHIRYO_SHEET_LINK          = "https://docs.google.com/spreadsheets/d/1g52sf9OltxFyOQD-IOE4WdkT45bLZW5EeMFqOl6MgnE/edit?gid=950486788#gid=950486788"
+SHIRYO_SHEET_LINK_SECURITY = "https://docs.google.com/spreadsheets/d/1OLJNwewnlDhIYA0FKfIfSvDBX9sXQwrVBn0050Cs3bw/edit?gid=950486788#gid=950486788"
 
 # ── 資料用Gmail ──
 MAIL_FROM_SHIRYO = "datarein@tasukaru39.com"
@@ -282,13 +283,14 @@ def add_reaction(client, timestamp):
             print(f"  → リアクション失敗: {e.response.get('error')}")
 
 
-def post_thread_reply(client, timestamp, sheet_status, draft_status):
+def post_thread_reply(client, timestamp, sheet_status, draft_status, is_security=False):
     check_label = ":white_check_mark: スプシ登録済み" if sheet_status == "registered" else ":warning: スプシ未登録（要確認）"
     draft_label = ":e-mail: Gmail下書き作成済み" if draft_status == "ok" else ":x: 下書き作成失敗"
+    sheet_link  = SHIRYO_SHEET_LINK_SECURITY if is_security else SHIRYO_SHEET_LINK
     text = (
         f"{SLACK_MENTION}\n"
         f"【スプシ照合】 {check_label}　{draft_label}\n"
-        f"※:g:資料送付日：{SHIRYO_SHEET_LINK}"
+        f"※:g:資料送付日：{sheet_link}"
     )
     try:
         client.chat_postMessage(channel=SLACK_CHANNEL_ID, text=text, thread_ts=timestamp)
@@ -418,7 +420,7 @@ def main():
                     print(f"  → 【資料】Gmail下書き作成: {company} / {person} / To:{to_email}")
                     hojin_body = extract_hojin_info(text)
                     post_shiryo_to_notify(slack, msg, poster_name, hojin_body, status)
-                    post_thread_reply(slack, msg["タイムスタンプ"], status, draft_status)
+                    post_thread_reply(slack, msg["タイムスタンプ"], status, draft_status, is_security=is_security)
 
                 elif "【アポ" in text:
                     records = apo_records_sec if is_security else apo_records
