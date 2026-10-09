@@ -38,7 +38,7 @@ MAX_WINNERS     = MONTHLY_BUDGET // PRIZE_AMOUNT  # 10
 EXPECTED_SPINS  = 20   # 推定月間スピン数（スタッフ約20名）
 DART_TEXT       = "🎯"  # 岡さんがコメントに書くダーツ絵文字
 
-DART_PAGE_URL = "https://claude.ai/artifact/ShjoaytZJzigWQPdj4oRZq"
+DART_PAGE_URL = "https://kuroe-afk.github.io/slack-reporter/dart.html"
 
 # 【アポ】自動🎯返信：2ポイントチャンネル
 APO_DOUBLE_CHANNELS = {
@@ -371,7 +371,7 @@ def process_roulette(client, nahooka_client, ss, user_id, thread_ts):
     result_param = "win" if won else "lose"
     name_enc     = urllib.parse.quote(user_name)
     prize_enc    = urllib.parse.quote(PRIZE_NAME)
-    dart_url     = f"{DART_PAGE_URL}#result={result_param}&name={name_enc}&prize={prize_enc}"
+    dart_url     = f"{DART_PAGE_URL}?result={result_param}&name={name_enc}&prize={prize_enc}"
 
     # ── Slackに投稿 ──
     dart_link = f"<{dart_url}|🎯 ダーツを投げる>"

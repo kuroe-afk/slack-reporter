@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dart Point</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=Pacifico&display=swap">
+<style>
+:root {
+  --bg: #FDF0F5;
+  --surface: #FFFFFF;
+  --surface-tint: #FFF5F9;
+  --accent: #FF85A1;
+  --accent-dark: #D95075;
+  --accent-light: #FFD6E4;
+  --mint: #5BBFA8;
+  --mint-light: #C0EEE4;
+  --gold: #F9C938;
+  --gold-light: #FFF4C2;
+  --plum: #3D1A33;
+  --rose: #A87090;
+  --lav: #E8D5F5;
+  --lav-mid: #9B72CF;
+  --shadow: rgba(255,133,161,0.18);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--plum);
+  font-family: 'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic', sans-serif;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  padding: 36px 16px;
+  overflow-x: hidden;
+  position: relative;
+}
+
+.blob { position: fixed; border-radius: 50%; filter: blur(70px); pointer-events: none; z-index: 0; }
+.blob-1 { width: 280px; height: 280px; background: rgba(255,180,210,0.4); top: -60px; right: -60px; }
+.blob-2 { width: 220px; height: 220px; background: rgba(192,238,228,0.35); bottom: 0; left: -40px; }
+.blob-3 { width: 180px; height: 180px; background: rgba(216,197,240,0.3); top: 40%; left: -30px; }
+
+header { text-align: center; position: relative; z-index: 1; }
+.logo { font-family: 'Pacifico', cursive; font-size: clamp(1.8rem, 6vw, 2.6rem); color: var(--accent); line-height: 1.1; text-shadow: 3px 3px 0 rgba(255,133,161,0.18); }
+.tagline { font-size: 0.78rem; color: var(--rose); margin-top: 3px; letter-spacing: 2px; text-transform: uppercase; }
+
+.badge { background: var(--surface); border: 2px solid var(--accent-light); border-radius: 100px; padding: 10px 28px; font-size: 0.95rem; font-weight: 700; color: var(--plum); box-shadow: 0 4px 18px var(--shadow); position: relative; z-index: 1; }
+.badge .hi { color: var(--rose); font-weight: 400; }
+.badge .nm { color: var(--accent); }
+
+.board-wrap { position: relative; z-index: 1; width: min(290px, 80vw); aspect-ratio: 1; }
+
+.sparkle { position: absolute; pointer-events: none; animation: twinkle 2.5s ease-in-out infinite; line-height: 1; }
+@keyframes twinkle { 0%, 100% { opacity: 0.35; transform: scale(0.75) rotate(-8deg); } 50% { opacity: 1; transform: scale(1.15) rotate(8deg); } }
+.sparkle:nth-child(2) { animation-delay: -.4s; }
+.sparkle:nth-child(3) { animation-delay: -.9s; }
+.sparkle:nth-child(4) { animation-delay: -1.4s; }
+.sparkle:nth-child(5) { animation-delay: -1.9s; }
+.sparkle:nth-child(6) { animation-delay: -2.3s; }
+.sparkle:nth-child(7) { animation-delay: -.7s; }
+.sparkle:nth-child(8) { animation-delay: -1.1s; }
+@media (prefers-reduced-motion: reduce) { .sparkle { animation: none; opacity: 0.7; } }
+
+.dartboard-svg { width: 100%; height: 100%; filter: drop-shadow(0 8px 28px rgba(255,133,161,0.22)); }
+
+.hit-ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border-radius: 50%; border: 3px solid var(--gold); pointer-events: none; opacity: 0; }
+.hit-ring.pop { animation: ringPop 0.65s ease-out forwards; }
+@keyframes ringPop { from { width: 16px; height: 16px; opacity: 1; } to { width: 130px; height: 130px; opacity: 0; } }
+
+#dart { position: fixed; pointer-events: none; z-index: 90; opacity: 0; width: 56px; height: auto; }
+
+.throw-btn { position: relative; z-index: 1; background: linear-gradient(135deg, #FF85A1 0%, #FF4D80 100%); color: #fff; border: none; border-radius: 100px; padding: 15px 50px; font-size: 1.1rem; font-weight: 900; font-family: inherit; cursor: pointer; box-shadow: 0 6px 24px rgba(255,77,128,.38); transition: transform .12s, box-shadow .12s; letter-spacing: 1px; user-select: none; }
+.throw-btn:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 10px 32px rgba(255,77,128,.48); }
+.throw-btn:active:not(:disabled) { transform: translateY(0); }
+.throw-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+.hint { font-size: 0.78rem; color: var(--rose); position: relative; z-index: 1; letter-spacing: 0.5px; }
+
+#overlay { position: fixed; inset: 0; background: rgba(39,16,32,0.65); backdrop-filter: blur(7px); display: flex; align-items: center; justify-content: center; padding: 24px; z-index: 150; opacity: 0; pointer-events: none; transition: opacity .4s; }
+#overlay.show { opacity: 1; pointer-events: auto; }
+
+.r-card { background: var(--surface); border-radius: 28px; padding: 36px 28px 28px; text-align: center; max-width: 320px; width: 100%; box-shadow: 0 20px 64px rgba(39,16,32,.3); animation: popIn .5s cubic-bezier(.34,1.56,.64,1) forwards; position: relative; overflow: hidden; }
+.r-card::before { content: ''; position: absolute; inset: 0; border-radius: 28px; padding: 2px; background: linear-gradient(135deg, var(--accent), var(--lav-mid), var(--mint)); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; }
+@keyframes popIn { from { transform: scale(.62) translateY(16px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+
+.r-emoji { font-size: 3.8rem; line-height: 1.2; }
+.r-title { font-size: 1.45rem; font-weight: 900; margin-top: 8px; letter-spacing: .5px; }
+.r-title.win { color: var(--accent-dark); }
+.r-title.lose { color: var(--rose); }
+.r-sub { font-size: 0.88rem; color: var(--rose); margin-top: 8px; line-height: 1.7; }
+.prize-box { margin-top: 16px; background: linear-gradient(135deg, var(--gold-light), #FFFADC); border: 2px solid var(--gold); border-radius: 14px; padding: 14px 18px; font-weight: 700; font-size: 1rem; color: #7A5000; }
+.close-btn { margin-top: 20px; background: var(--surface-tint); border: 2px solid var(--accent-light); border-radius: 100px; padding: 10px 34px; font-family: inherit; font-size: 0.88rem; font-weight: 700; color: var(--rose); cursor: pointer; transition: background .15s, border-color .15s; }
+.close-btn:hover { background: var(--accent-light); border-color: var(--accent); }
+
+#confetti { position: fixed; inset: 0; pointer-events: none; z-index: 140; }
+</style>
+</head>
+<body>
+
+<canvas id="confetti"></canvas>
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+<div class="blob blob-3"></div>
+
+<svg id="dart" viewBox="0 0 56 18" xmlns="http://www.w3.org/2000/svg">
+  <polygon points="52,0 56,9 52,18 44,9" fill="#D8C5F0"/>
+  <polygon points="52,3 56,9 52,15 48,9" fill="#9B72CF"/>
+  <rect x="9" y="7.5" width="40" height="3" rx="1.5" fill="#C8C8C8"/>
+  <rect x="3" y="6" width="12" height="6" rx="3" fill="#FF85A1"/>
+  <polygon points="0,9 5,6.5 5,11.5" fill="#F9C938"/>
+</svg>
+
+<header>
+  <div class="logo">🎯 Dart Point</div>
+  <div class="tagline">ダーツポイントルーレット</div>
+</header>
+
+<div class="badge">
+  <span class="hi">こんにちは！</span>
+  <span id="staff-name" class="nm">スタッフ</span>さん 🌸
+</div>
+
+<div class="board-wrap" id="board-wrap">
+  <span class="sparkle" style="font-size:1.1rem;top:-18px;left:50%;transform:translateX(-50%)">⭐</span>
+  <span class="sparkle" style="font-size:1rem;top:8%;right:-20px">✨</span>
+  <span class="sparkle" style="font-size:1.2rem;bottom:14%;right:-22px">💫</span>
+  <span class="sparkle" style="font-size:1rem;bottom:-16px;left:50%;transform:translateX(-50%)">⭐</span>
+  <span class="sparkle" style="font-size:1.1rem;bottom:14%;left:-22px">✨</span>
+  <span class="sparkle" style="font-size:1rem;top:8%;left:-20px">💫</span>
+  <span class="sparkle" style="font-size:1.3rem;top:42%;right:-26px">🌸</span>
+  <span class="sparkle" style="font-size:1.3rem;top:42%;left:-26px">🌸</span>
+  <svg class="dartboard-svg" id="dartboard" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="100" cy="103" r="90" fill="rgba(255,133,161,0.10)"/>
+    <circle cx="100" cy="100" r="90" fill="#EBD8F7"/>
+    <circle cx="100" cy="100" r="72" fill="#FFD6E4"/>
+    <circle cx="100" cy="100" r="54" fill="#C0EEE4"/>
+    <circle cx="100" cy="100" r="36" fill="#FF85A1"/>
+    <circle cx="100" cy="100" r="18" fill="#F9C938"/>
+    <circle cx="100" cy="100" r="7" fill="#FFF" opacity=".9"/>
+    <line x1="100" y1="10" x2="100" y2="190" stroke="#fff" stroke-width="1" opacity=".22"/>
+    <line x1="10" y1="100" x2="190" y2="100" stroke="#fff" stroke-width="1" opacity=".22"/>
+    <circle cx="100" cy="100" r="90" fill="none" stroke="#C8A8E0" stroke-width="2.5"/>
+    <circle cx="100" cy="100" r="72" fill="none" stroke="#fff" stroke-width="1.5" opacity=".5"/>
+    <circle cx="100" cy="100" r="54" fill="none" stroke="#fff" stroke-width="1.5" opacity=".5"/>
+    <circle cx="100" cy="100" r="36" fill="none" stroke="#fff" stroke-width="1.5" opacity=".5"/>
+    <circle cx="100" cy="100" r="18" fill="none" stroke="#fff" stroke-width="1.5" opacity=".5"/>
+    <text x="100" y="24" text-anchor="middle" font-size="11" fill="#9B72CF">⭐</text>
+    <text x="176" y="104" text-anchor="middle" font-size="10" fill="#FF85A1">💕</text>
+    <text x="100" y="181" text-anchor="middle" font-size="11" fill="#5BBFA8">🌸</text>
+    <text x="24" y="104" text-anchor="middle" font-size="10" fill="#FF85A1">💕</text>
+    <text x="100" y="100" text-anchor="middle" dominant-baseline="central" font-size="11">💖</text>
+  </svg>
+  <div class="hit-ring" id="hit-ring"></div>
+</div>
+
+<button class="throw-btn" id="throw-btn" onclick="startThrow()">
+  <span>🎯</span> ダーツを投げる！
+</button>
+<p class="hint">ボタンを押してダーツを投げよう 🌟</p>
+
+<div id="overlay">
+  <div class="r-card" id="r-card"></div>
+</div>
+
+<script>
+const p       = new URLSearchParams(location.search);
+const sName   = p.get('name')   || 'スタッフ';
+const sResult = p.get('result') || 'demo';
+const sPrize  = p.get('prize')  || 'Amazonギフト券1,000円';
+
+document.getElementById('staff-name').textContent = sName;
+
+let thrown = false;
+
+function startThrow() {
+  if (thrown) return;
+  thrown = true;
+  document.getElementById('throw-btn').disabled = true;
+
+  const dart  = document.getElementById('dart');
+  const board = document.getElementById('dartboard');
+  const bRect = board.getBoundingClientRect();
+  const cx    = bRect.left + bRect.width  / 2;
+  const cy    = bRect.top  + bRect.height / 2;
+  const sx    = window.innerWidth + 80;
+
+  dart.style.cssText = `position:fixed;left:${sx}px;top:${cy - 9}px;opacity:1;width:56px;z-index:90;pointer-events:none;`;
+
+  dart.animate([
+    { transform: 'translate(0,0)', opacity: 1 },
+    { transform: `translate(${cx - sx - 4}px, 0)`, opacity: 1 }
+  ], { duration: 440, easing: 'cubic-bezier(0.1,0,0.15,1)', fill: 'forwards' }).onfinish = () => {
+    if (navigator.vibrate) navigator.vibrate(55);
+    document.getElementById('hit-ring').classList.add('pop');
+    setTimeout(showResult, 550);
+  };
+}
+
+function showResult() {
+  const card = document.getElementById('r-card');
+  if (sResult === 'win') {
+    card.innerHTML = `
+      <div class="r-emoji">🎊🎁🎊</div>
+      <div class="r-title win">おめでとうございます！</div>
+      <p class="r-sub">見事ダーツが的に刺さりました！<br>素晴らしい！✨✨</p>
+      <div class="prize-box">🎁 ${sPrize} GET！</div>
+      <p class="r-sub" style="margin-top:10px">黒江までご連絡ください 🙌</p>
+      <button class="close-btn" onclick="closeResult()">とじる ✿</button>`;
+    launchConfetti();
+  } else if (sResult === 'lose') {
+    card.innerHTML = `
+      <div class="r-emoji">🌈💪🌈</div>
+      <div class="r-title lose">惜しかった！</div>
+      <p class="r-sub">またポイントをためて<br>次回チャレンジしてみてね！<br>応援してるよ 💕</p>
+      <button class="close-btn" onclick="closeResult()">またがんばる！🌟</button>`;
+  } else {
+    card.innerHTML = `
+      <div class="r-emoji">🎯</div>
+      <div class="r-title" style="color:var(--lav-mid)">デモモード</div>
+      <p class="r-sub">URLに <code>?result=win</code> または<br><code>?result=lose&name=名前</code> を追加してください</p>
+      <button class="close-btn" onclick="closeResult()">もう一度</button>`;
+  }
+  document.getElementById('overlay').classList.add('show');
+}
+
+function closeResult() {
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('dart').style.opacity = '0';
+  document.getElementById('hit-ring').classList.remove('pop');
+  setTimeout(() => { thrown = false; document.getElementById('throw-btn').disabled = false; }, 350);
+}
+
+function launchConfetti() {
+  const cv = document.getElementById('confetti');
+  const ctx = cv.getContext('2d');
+  cv.width = window.innerWidth;
+  cv.height = window.innerHeight;
+  const colors = ['#FF85A1','#FFD6E4','#F9C938','#C0EEE4','#EBD8F7','#9B72CF','#5BBFA8'];
+  const pieces = Array.from({ length: 110 }, () => ({
+    x: Math.random() * cv.width, y: -20 - Math.random() * 120,
+    r: 3.5 + Math.random() * 5.5, vy: 2.5 + Math.random() * 3.5,
+    vx: Math.random() * 2 - 1, color: colors[Math.floor(Math.random() * colors.length)],
+    angle: Math.random() * Math.PI * 2, spin: (Math.random() - 0.5) * 0.15,
+    shape: Math.random() > 0.45 ? 'circle' : 'rect',
+  }));
+  let frame = 0;
+  (function draw() {
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    pieces.forEach(q => {
+      ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(q.angle); ctx.fillStyle = q.color;
+      if (q.shape === 'circle') { ctx.beginPath(); ctx.arc(0, 0, q.r, 0, Math.PI*2); ctx.fill(); }
+      else { ctx.fillRect(-q.r, -q.r*.5, q.r*2, q.r); }
+      ctx.restore();
+      q.y += q.vy + Math.sin(frame*.04 + q.angle)*.7;
+      q.x += q.vx + Math.sin(frame*.025 + q.angle)*1.1;
+      q.angle += q.spin;
+    });
+    frame++;
+    if (frame < 190) requestAnimationFrame(draw);
+    else ctx.clearRect(0, 0, cv.width, cv.height);
+  })();
+}
+</script>
+</body>
+</html>
