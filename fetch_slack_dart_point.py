@@ -67,7 +67,11 @@ SHEET_BUDGET    = "月予算"
 SHEET_PROCESSED = "処理済みリアクション"
 
 # ポイント管理 列インデックス（0始まり）
-C_UID, C_PTS, C_TOT, C_NAME, C_LSPIN, C_LWIN = 0, 1, 2, 3, 4, 5
+# A:ユーザーID B:ポイント C:合計獲得 D:名前 E〜I:スピン月(最大5回) J:最終当選月
+C_UID, C_PTS, C_TOT, C_NAME = 0, 1, 2, 3
+C_SPIN_START = 4        # E列から
+MAX_SPINS_PER_MONTH = 5 # 月最大スピン回数
+C_LWIN = 9              # J列: 最終当選月
 
 
 # ── 日付ユーティリティ ──────────────────────────
@@ -119,12 +123,19 @@ def get_user(users, user_id):
     return users.get(user_id, (None, []))
 
 
-def upsert_user(ws, users, user_id, points, total, name, last_spin, last_win):
-    """ユーザーをupdateまたはappend"""
-    row = [user_id, points, total, name, last_spin, last_win]
+def get_spin_slots(row):
+    """E〜I列のスピン月リスト（5要素）を返す"""
+    return [row[C_SPIN_START + i] if len(row) > C_SPIN_START + i else ""
+            for i in range(MAX_SPINS_PER_MONTH)]
+
+
+def upsert_user(ws, users, user_id, points, total, name, spin_slots, last_win):
+    """ユーザーをupdateまたはappend（spin_slots: list of 5 strings）"""
+    slots = (spin_slots + [""] * MAX_SPINS_PER_MONTH)[:MAX_SPINS_PER_MONTH]
+    row = [user_id, points, total, name] + slots + [last_win]
     row_idx, _ = get_user(users, user_id)
     if row_idx:
-        ws.update(f"A{row_idx}:F{row_idx}", [row], value_input_option="USER_ENTERED")
+        ws.update(f"A{row_idx}:J{row_idx}", [row], value_input_option="USER_ENTERED")
     else:
         ws.append_row(row, value_input_option="USER_ENTERED")
 
@@ -248,11 +259,11 @@ def process_point(client, nahooka_client, ss, from_user_id, to_user_id, is_offic
                     f"現在のポイント：★ *{from_pts}pt*")
             return None
 
-        from_total = _int(from_row[C_TOT] if len(from_row) > C_TOT else 0)
-        from_lspin = from_row[C_LSPIN] if len(from_row) > C_LSPIN else ""
-        from_lwin  = from_row[C_LWIN]  if len(from_row) > C_LWIN  else ""
+        from_total      = _int(from_row[C_TOT] if len(from_row) > C_TOT else 0)
+        from_spin_slots = get_spin_slots(from_row)
+        from_lwin       = from_row[C_LWIN] if len(from_row) > C_LWIN else ""
         upsert_user(ws_pts, users, from_user_id,
-                    from_pts - 1, from_total, from_name, from_lspin, from_lwin)
+                    from_pts - 1, from_total, from_name, from_spin_slots, from_lwin)
         add_history(ws_hist, "贈与(送)", from_user_id, to_user_id, -1,
                     f"{from_name}→{to_name}")
 
@@ -265,15 +276,15 @@ def process_point(client, nahooka_client, ss, from_user_id, to_user_id, is_offic
         # 付与はするがルーレット当選枠は別管理なので予算チェックのみここで行う
 
     # ── 受け取り側に+1 ──
-    _, to_row = get_user(users, to_user_id)
-    to_pts   = _int(to_row[C_PTS] if len(to_row) > C_PTS else 0)
-    to_total = _int(to_row[C_TOT] if len(to_row) > C_TOT else 0)
-    to_lspin = to_row[C_LSPIN] if len(to_row) > C_LSPIN else ""
-    to_lwin  = to_row[C_LWIN]  if len(to_row) > C_LWIN  else ""
+    _, to_row       = get_user(users, to_user_id)
+    to_pts          = _int(to_row[C_PTS] if len(to_row) > C_PTS else 0)
+    to_total        = _int(to_row[C_TOT] if len(to_row) > C_TOT else 0)
+    to_spin_slots   = get_spin_slots(to_row)
+    to_lwin         = to_row[C_LWIN] if len(to_row) > C_LWIN else ""
 
     new_pts = to_pts + 1
     upsert_user(ws_pts, users, to_user_id,
-                new_pts, to_total + 1, to_name, to_lspin, to_lwin)
+                new_pts, to_total + 1, to_name, to_spin_slots, to_lwin)
 
     kind = "公式付与" if is_official else "贈与(受)"
     add_history(ws_hist, kind, from_user_id, to_user_id, 1,
@@ -282,20 +293,21 @@ def process_point(client, nahooka_client, ss, from_user_id, to_user_id, is_offic
 
     # ── DM通知 ──
     giver  = "岡さん" if is_official else from_name
-    remain = POINTS_TO_SPIN - new_pts
+    next_threshold = ((new_pts // POINTS_TO_SPIN) + 1) * POINTS_TO_SPIN
+    remain = next_threshold - new_pts
     dm = (
         f"🎯 *1ポイントGetしました！*\n"
         f"付与者：{giver}\n"
         f"ただいまの合計：★ *{new_pts}ポイント* 🌟\n\n"
     )
-    if new_pts >= POINTS_TO_SPIN:
-        dm += f"🎰 *{POINTS_TO_SPIN}ポイント達成！* ダーツチャンネルをご確認ください 🎉"
+    if new_pts % POINTS_TO_SPIN == 0:
+        dm += f"🎰 *{new_pts}ポイント達成！* ダーツチャンネルをご確認ください 🎉"
     else:
-        dm += f"ルーレットまであと *{remain}ポイント* です 💪"
+        dm += f"次のルーレットまであと *{remain}ポイント* です 💪"
     send_dm(nahooka_client, to_user_id, dm)
 
-    # ── 10ポイント達成通知 ──
-    if new_pts >= POINTS_TO_SPIN and to_pts < POINTS_TO_SPIN:
+    # ── 10ポイント達成通知（10の倍数になるたびに） ──
+    if new_pts % POINTS_TO_SPIN == 0:
         notify_general_10pt(nahooka_client, to_user_id)
 
     return new_pts
@@ -309,12 +321,12 @@ def process_roulette(client, nahooka_client, ss, user_id, thread_ts):
     ws_hist = ss.worksheet(SHEET_HISTORY)
     ws_bud  = ss.worksheet(SHEET_BUDGET)
 
-    user_name = get_user_name(client, user_id)
-    users     = load_users(ws_pts)
-    _, row    = get_user(users, user_id)
-    cur_pts   = _int(row[C_PTS] if len(row) > C_PTS else 0)
-    lspin     = row[C_LSPIN] if len(row) > C_LSPIN else ""
-    lwin      = row[C_LWIN]  if len(row) > C_LWIN  else ""
+    user_name   = get_user_name(client, user_id)
+    users       = load_users(ws_pts)
+    _, row      = get_user(users, user_id)
+    cur_pts     = _int(row[C_PTS] if len(row) > C_PTS else 0)
+    spin_slots  = get_spin_slots(row)
+    lwin        = row[C_LWIN] if len(row) > C_LWIN else ""
 
     # ── ポイント確認 ──
     if cur_pts < POINTS_TO_SPIN:
@@ -329,13 +341,16 @@ def process_roulette(client, nahooka_client, ss, user_id, thread_ts):
             pass
         return
 
-    # ── 今月すでにスピン済みか確認 ──
+    # ── 今月のスピン回数を確認 ──
     cm = current_month()
-    if lspin == cm:
+    this_month_spins = sum(1 for s in spin_slots if s == cm)
+    max_spins = min(cur_pts // POINTS_TO_SPIN, MAX_SPINS_PER_MONTH)
+
+    if this_month_spins >= max_spins:
         try:
             nahooka_client.chat_postMessage(
                 channel=DART_CHANNEL,
-                text=f"😊 <@{user_id}> さん、今月はすでにルーレットを使用済みです。\n来月またチャレンジしてください 🌸",
+                text=f"😊 <@{user_id}> さん、今月のルーレットはすべて使用済みです。\n来月またチャレンジしてください 🌸",
                 thread_ts=thread_ts,
             )
         except SlackApiError:
@@ -345,17 +360,26 @@ def process_roulette(client, nahooka_client, ss, user_id, thread_ts):
     # ── 月データ取得 ──
     bud_row, winners, spins = get_month_data(ws_bud)
 
-    # ── 当選確率を計算 ──
+    # ── 当選確率を計算（先月スピンしたかはスロット全体で判定） ──
+    lm = last_month()
+    last_spin_month = lm if any(s == lm for s in spin_slots) else ""
     remaining = MAX_WINNERS - winners
-    win_prob  = calc_win_prob(remaining, spins, lspin, lwin)
+    win_prob  = calc_win_prob(remaining, spins, last_spin_month, lwin)
     won       = random.random() < win_prob
+
+    # ── スピンスロットを更新（cmでない最初のスロットに記録） ──
+    new_spin_slots = spin_slots[:]
+    for i in range(MAX_SPINS_PER_MONTH):
+        if new_spin_slots[i] != cm:
+            new_spin_slots[i] = cm
+            break
 
     # ── ポイント消費・月データ更新 ──
     new_pts  = cur_pts - POINTS_TO_SPIN
     new_lwin = cm if won else lwin
     to_total = _int(row[C_TOT] if len(row) > C_TOT else 0)
     upsert_user(ws_pts, users, user_id,
-                new_pts, to_total, user_name, cm, new_lwin)
+                new_pts, to_total, user_name, new_spin_slots, new_lwin)
 
     new_winners = winners + (1 if won else 0)
     update_month_data(ws_bud, bud_row, new_winners, spins + 1)
