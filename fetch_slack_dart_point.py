@@ -50,6 +50,8 @@ APO_DOUBLE_CHANNELS = {
 }
 PRIZE_NAME    = f"Amazonギフト券{PRIZE_AMOUNT:,}円"
 
+DART_CHANNEL    = "C0C8SECU5DE"  # ダーツチャンネル（ポイント通知先）
+
 # 他スタッフのリアクションを監視するチャンネル（必要に応じて追加）
 MONITOR_CHANNELS = [GENERAL_CHANNEL, DART_CHANNEL]
 
@@ -57,8 +59,6 @@ SPREADSHEET_ID   = os.getenv("DART_POINT_SPREADSHEET_ID",
                               "15XHLNuRfobSTKay_qlNqS1rdG6e83-bWCt26Gjx5zD0")
 CREDENTIALS_FILE = "credentials.json"
 LAST_TS_FILE     = "last_timestamp_dart_point.txt"
-
-DART_CHANNEL    = "C0C8SECU5DE"  # ダーツチャンネル（ポイント通知先）
 
 SHEET_POINTS    = "ポイント管理"
 SHEET_HISTORY   = "履歴"
