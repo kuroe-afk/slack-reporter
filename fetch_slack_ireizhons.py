@@ -62,10 +62,10 @@ TEMPLATE_SHIRYO = (
 # ──────────────────────────────────────
 
 def open_spreadsheet():
-    scopes = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
+    scopes = ["https://www.googleapis.com/auth/spreadsheets",
+              "https://www.googleapis.com/auth/drive"]
     creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=scopes)
-    gc = gspread.authorize(creds)
-    return gc.open_by_key(SPREADSHEET_ID)
+    return gspread.authorize(creds).open_by_key(SPREADSHEET_ID)
 
 
 def load_apo_records(sheet):
