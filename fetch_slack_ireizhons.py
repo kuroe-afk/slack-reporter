@@ -278,7 +278,9 @@ def main():
         print(f"  → 見込み企業: {len(mikomi_records)} 件")
         print(f"  → 資料送付: {len(shiryo_records)} 件")
     except Exception as e:
-        print(f"スプレッドシート読み込みエラー: {e}")
+        import traceback
+        print(f"スプレッドシート読み込みエラー: {e!r}")
+        traceback.print_exc()
         return
 
     try:
