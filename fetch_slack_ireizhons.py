@@ -23,7 +23,7 @@ SLACK_MENTION        = os.getenv("SLACK_MENTION", "")
 SPREADSHEET_ID   = os.getenv("IREIZHONS_SPREADSHEET_ID", "1evRKWMhmCaBJdNDt0J9PY13mEju2KTI6frMID_NhVcw")
 CREDENTIALS_FILE = "credentials.json"
 
-KEYWORDS = ["【アポ", "【見込み", "【資料送付"]
+KEYWORDS = ["【アポ", "【見込み", "【資料送付", "【資料依頼"]
 
 FETCH_LIMIT  = 50
 LAST_TS_FILE = "last_timestamp_ireizhons.txt"
