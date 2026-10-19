@@ -30,8 +30,8 @@ FETCH_LIMIT  = 50
 LAST_TS_FILE = "last_timestamp_connect.txt"
 
 HEADER_MENTIONS = (
-    "@米村縣太様\n"
-    "@笠原悠司様\n"
+    "@米村縣太\n"
+    "@笠原悠司\n"
     "お世話になっております。\n"
 )
 
