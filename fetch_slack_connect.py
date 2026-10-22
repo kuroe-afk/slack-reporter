@@ -250,7 +250,7 @@ def main():
     print("スプレッドシートを読み込み中...")
     try:
         ss             = open_spreadsheet()
-        apo_records    = load_records(ss.worksheet("アポイント取得企業"))
+        apo_records    = load_records(ss.worksheet("アポイント取得"))
         mikomi_records = load_records(ss.worksheet("見込み企業"))
         shiryo_records = load_records(ss.worksheet("資料送付"))
         print(f"  → アポ:{len(apo_records)}件 / 見込み:{len(mikomi_records)}件 / 資料:{len(shiryo_records)}件")
