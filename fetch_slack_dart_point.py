@@ -364,8 +364,8 @@ def process_roulette(client, nahooka_client, ss, user_id, thread_ts):
             new_spin_slots[i] = cm
             break
 
-    # ── ポイント消費・月データ更新 ──
-    new_pts  = cur_pts - POINTS_TO_SPIN
+    # ── 月データ更新（ポイントは消費しない） ──
+    new_pts  = cur_pts
     new_lwin = cm if won else lwin
     to_total = _int(row[C_TOT] if len(row) > C_TOT else 0)
     upsert_user(ws_pts, users, user_id,
