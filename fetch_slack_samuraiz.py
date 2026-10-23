@@ -376,9 +376,12 @@ def main():
     # Gmail接続
     print("Gmailに接続中...")
     try:
+        print("  → jimucenter接続中...")
         gmail_jimucenter = get_gmail_service(REFRESH_TOKEN_JIMUCENTER)
+        print("  → jimucenter接続成功")
+        print("  → samuraiz接続中...")
         gmail_samuraiz   = get_gmail_service(REFRESH_TOKEN_SAMURAIZ)
-        print("  → 接続成功")
+        print("  → samuraiz接続成功")
     except Exception as e:
         print(f"Gmailエラー: {e}")
         return
