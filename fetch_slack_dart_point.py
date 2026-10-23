@@ -332,19 +332,6 @@ def process_roulette(client, nahooka_client, ss, user_id, thread_ts):
     spin_slots  = get_spin_slots(row)
     lwin        = row[C_LWIN] if len(row) > C_LWIN else ""
 
-    # ── ポイント確認 ──
-    if cur_pts < POINTS_TO_SPIN:
-        try:
-            nahooka_client.chat_postMessage(
-                channel=DART_CHANNEL,
-                text=(f"😢 <@{user_id}> さん、ポイントが不足しています。\n"
-                      f"現在：*{cur_pts}pt* / 必要：*{POINTS_TO_SPIN}pt*"),
-                thread_ts=thread_ts,
-            )
-        except SlackApiError:
-            pass
-        return
-
     # ── 今月の絶対上限チェック（5回） ──
     cm = current_month()
     this_month_spins = sum(1 for s in spin_slots if s == cm)
