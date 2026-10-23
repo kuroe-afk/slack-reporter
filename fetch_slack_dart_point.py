@@ -341,12 +341,11 @@ def process_roulette(client, nahooka_client, ss, user_id, thread_ts):
             pass
         return
 
-    # ── 今月のスピン回数を確認 ──
+    # ── 今月の絶対上限チェック（5回） ──
     cm = current_month()
     this_month_spins = sum(1 for s in spin_slots if s == cm)
-    max_spins = min(cur_pts // POINTS_TO_SPIN, MAX_SPINS_PER_MONTH)
 
-    if this_month_spins >= max_spins:
+    if this_month_spins >= MAX_SPINS_PER_MONTH:
         try:
             nahooka_client.chat_postMessage(
                 channel=DART_CHANNEL,
