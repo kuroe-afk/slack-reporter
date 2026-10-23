@@ -138,6 +138,10 @@ def upsert_user(ws, users, user_id, points, total, name, spin_slots, last_win):
         ws.update(f"A{row_idx}:J{row_idx}", [row], value_input_option="USER_ENTERED")
     else:
         ws.append_row(row, value_input_option="USER_ENTERED")
+        # 新規追加後にin-memoryのusersを更新して二重appendを防ぐ
+        all_rows = ws.get_all_values()
+        new_idx = len(all_rows)
+        users[user_id] = (new_idx, row)
 
 
 def add_history(ws, kind, from_id, to_id, delta, memo=""):

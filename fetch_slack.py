@@ -304,12 +304,20 @@ def post_to_slack(client, notify_channel, source_channel_name, msg, sheet_status
     else:
         check_label = "⚠️ スプシ未登録（要確認）"
 
+    try:
+        permalink = client.chat_getPermalink(
+            channel=SLACK_CHANNEL_ID, message_ts=msg["タイムスタンプ"]
+        )["permalink"]
+    except Exception:
+        permalink = ""
+
     text = (
         f"{SLACK_MENTION}\n"
         f"*【元チャンネル】* #{display_name}　"
         f"*【投稿日時】* {msg['投稿日時']}　"
         f"*【投稿者】* {poster_name}　"
         f"*【スプシ照合】* {check_label}\n"
+        f"元スレッド：{permalink}\n"
         f"{'─' * 40}\n"
         f"{draft}"
     )

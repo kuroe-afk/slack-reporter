@@ -53,8 +53,7 @@ TEMPLATE_MIKOMI = (
 )
 
 TEMPLATE_SHIRYO = (
-    "【資料送付】\n"
-    + HEADER_MENTIONS
+    HEADER_MENTIONS
     + "下記、資料送付依頼でございます。\n"
     "恐れ入りますが、ご対応のほどよろしくお願いいたします。\n\n"
     "{body}"
@@ -220,12 +219,20 @@ def post_to_slack(client, msg, sheet_status, poster_name):
     draft       = build_draft(msg)
     check_label = "✅ スプシ登録済み" if sheet_status == "registered" else "⚠️ スプシ未登録（要確認）"
 
+    try:
+        permalink = client.chat_getPermalink(
+            channel=SLACK_CHANNEL_ID, message_ts=msg["タイムスタンプ"]
+        )["permalink"]
+    except Exception:
+        permalink = ""
+
     text = (
         f"{SLACK_MENTION}\n"
         f"*【元チャンネル】* #tos-works　"
         f"*【投稿日時】* {msg['投稿日時']}　"
         f"*【投稿者】* {poster_name}　"
         f"*【スプシ照合】* {check_label}\n"
+        f"元スレッド：{permalink}\n"
         f"{'─' * 40}\n"
         f"{draft}"
     )

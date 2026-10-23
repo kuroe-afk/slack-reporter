@@ -319,12 +319,19 @@ def fetch_user_name(client, user_id):
 def post_slack_notify_apo(client, msg, poster_name, sheet_status, draft_status, body_text):
     check_label  = "✅ スプシ登録済み" if sheet_status == "registered" else "⚠️ スプシ未登録"
     draft_label  = ":e-mail: Gmail下書き作成済み" if draft_status == "ok" else ":x: 下書き作成失敗"
+    try:
+        permalink = client.chat_getPermalink(
+            channel=SLACK_CHANNEL_ID, message_ts=msg["タイムスタンプ"]
+        )["permalink"]
+    except Exception:
+        permalink = ""
     text = (
         f"{SLACK_MENTION}\n"
         f"【元チャンネル】 #at-acty-pro　"
         f"【投稿日時】 {msg['投稿日時']}　"
         f"【投稿者】 {poster_name}　"
         f"【スプシ照合】 {check_label}　{draft_label}\n"
+        f"元スレッド：{permalink}\n"
         f":warning:ログ未格納　ログURL未記入\n\n"
         f"{SLACK_MENTION_ACTY}\n"
         f"お世話になっております。\n"
