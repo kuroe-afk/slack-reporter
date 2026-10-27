@@ -1,0 +1,18 @@
+name: Gmailトークン更新リマインド（毎週月曜）
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'  # 毎週月曜 09:00 JST
+  workflow_dispatch:
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Slackにリマインド通知
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{
+            "text": "⚠️ *Gmailトークン更新リマインド*\n以下のアカウントのトークンは7日で期限切れになります。\nローカルで `python get_refresh_token.py` を実行して更新してください。\n\n対象アカウント：\n• `tasukaru.jimucenter@gmail.com` → `GMAIL_REFRESH_TOKEN_JIMUCENTER`\n• `ap.sales@smartshare.jp` → `GMAIL_REFRESH_TOKEN_ACTY`\n• `okanaho.sango@gmail.com` → `GMAIL_REFRESH_TOKEN_SANGO_OKA`\n• `samuraiz@tasukaru39.com` → `GMAIL_REFRESH_TOKEN_SAMURAIZ`"
+          }' \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
