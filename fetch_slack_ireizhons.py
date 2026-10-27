@@ -29,7 +29,7 @@ FETCH_LIMIT  = 50
 LAST_TS_FILE = "last_timestamp_ireizhons.txt"
 
 CHATWORK_HEADER = (
-    "[To:EL-satoyuzuru]佐藤　弦さん\n"
+    "[To:11541069]佐藤　弦さん\n"
     "\n"
     "お世話になっております。\n"
 )
