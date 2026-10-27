@@ -13,6 +13,6 @@ jobs:
         run: |
           curl -X POST -H 'Content-type: application/json' \
           --data '{
-            "text": "⚠️ *Gmailトークン更新リマインド*\n以下のアカウントのトークンは7日で期限切れになります。\nローカルで `python get_refresh_token.py` を実行して更新してください。\n\n対象アカウント：\n• `tasukaru.jimucenter@gmail.com` → `GMAIL_REFRESH_TOKEN_JIMUCENTER`\n• `ap.sales@smartshare.jp` → `GMAIL_REFRESH_TOKEN_ACTY`\n• `okanaho.sango@gmail.com` → `GMAIL_REFRESH_TOKEN_SANGO_OKA`\n• `samuraiz@tasukaru39.com` → `GMAIL_REFRESH_TOKEN_SAMURAIZ`"
+            "text": "⚠️ *Gmailトークン更新リマインド*\n以下のアカウントのトークンは7日で期限切れになります。\nローカルで `python get_refresh_token.py` を実行して更新してください。\n\n対象アカウント：\n• `tasukaru.jimucenter@gmail.com` → `GMAIL_REFRESH_TOKEN_JIMUCENTER`\n• `okanaho.sango@gmail.com` → `GMAIL_REFRESH_TOKEN_SANGO_OKA`"
           }' \
           ${{ secrets.SLACK_WEBHOOK_URL }}
