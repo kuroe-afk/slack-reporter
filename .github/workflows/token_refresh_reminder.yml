@@ -13,6 +13,6 @@ jobs:
         run: |
           curl -X POST -H 'Content-type: application/json' \
           --data '{
-            "text": "⚠️ *Gmailトークン更新リマインド*\n以下のアカウントのトークンは7日で期限切れになります。\nローカルで `python get_refresh_token.py` を実行して更新してください。\n\n対象アカウント：\n• `tasukaru.jimucenter@gmail.com` → `GMAIL_REFRESH_TOKEN_JIMUCENTER`\n• `okanaho.sango@gmail.com` → `GMAIL_REFRESH_TOKEN_SANGO_OKA`"
+            "text": "⚠️ *Gmailトークン更新リマインド*\n以下のアカウントのトークンは7日で期限切れになります。\n\n*手順：*\n1️⃣ コマンドプロンプトを開いて下記を順番に実行\n```cd C:\\Users\\admin\\OneDrive\\Desktop\\新しいフォルダー\\slack_reporter```\n```python get_refresh_token.py```\n2️⃣ ブラウザが開いたら対象アカウントでログインして許可\n3️⃣ 表示されたトークン（=より後）をGitHub Secretsに貼り付け\n\n*対象アカウント：*\n• `tasukaru.jimucenter@gmail.com` → `GMAIL_REFRESH_TOKEN_JIMUCENTER`\n• `okanaho.sango@gmail.com` → `GMAIL_REFRESH_TOKEN_SANGO_OKA`"
           }' \
           ${{ secrets.SLACK_WEBHOOK_URL }}
