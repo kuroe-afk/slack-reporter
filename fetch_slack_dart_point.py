@@ -645,6 +645,20 @@ def fetch_and_reply_apo(client, nahooka_client, processed_keys, after_ts):
             key = f"apo_{ch}_{ts}"
             if key in processed_keys:
                 continue
+            # スレッドにnahookaがすでに返信していないか確認（二重投稿防止）
+            try:
+                nahooka_uid = nahooka_client.auth_test()["user_id"]
+                rep = nahooka_client.conversations_replies(channel=ch, ts=ts, limit=50)
+                already_replied = any(
+                    r.get("user") == nahooka_uid and DART_TEXT in r.get("text", "")
+                    for r in rep.get("messages", [])
+                    if r.get("ts") != ts
+                )
+                if already_replied:
+                    print(f"  → 【アポ】返信済みのためスキップ: {ch}")
+                    continue
+            except SlackApiError:
+                pass
             dart_count = 2 if ch in APO_DOUBLE_CHANNELS else 1
             darts      = DART_TEXT * dart_count
             reply_text = f"<@{sender}> ありがとうございます{darts}"
