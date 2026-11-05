@@ -633,6 +633,9 @@ def fetch_and_reply_apo(client, nahooka_client, processed_keys, after_ts):
             print(f"  → 履歴取得失敗({ch}): {e.response.get('error')}")
             continue
         for msg in msgs:
+            # スレッド返信（返信コメント）は対象外 — 親投稿のみ対象
+            if msg.get("thread_ts") and msg.get("thread_ts") != msg.get("ts"):
+                continue
             text   = msg.get("text", "")
             sender = msg.get("user", "")
             ts     = msg.get("ts", "")
