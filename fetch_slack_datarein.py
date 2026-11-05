@@ -308,7 +308,7 @@ def extract_hojin_info(text):
     return body
 
 
-def post_shiryo_to_notify(client, msg, poster_name, hojin_body, sheet_status):
+def post_shiryo_to_notify(client, msg, poster_name, hojin_body, sheet_status, is_security=False):
     check_label = "✅ スプシ登録済み" if sheet_status == "registered" else "⚠️ スプシ未登録（要確認）"
     try:
         permalink = client.chat_getPermalink(
@@ -316,6 +316,7 @@ def post_shiryo_to_notify(client, msg, poster_name, hojin_body, sheet_status):
         )["permalink"]
     except Exception:
         permalink = ""
+    security_header = "【資料送付】セキュリティ\n————————————————————\n" if is_security else ""
     text = (
         f"{SLACK_MENTION}\n"
         f"*【元チャンネル】* #{SOURCE_CHANNEL_NAME}　"
@@ -324,6 +325,7 @@ def post_shiryo_to_notify(client, msg, poster_name, hojin_body, sheet_status):
         f"*【スプシ照合】* {check_label}\n"
         f"元スレッド：{permalink}\n"
         f"{'─' * 40}\n"
+        f"{security_header}"
         f"@鈴木健斗 様\n"
         f"お世話になっております。\n"
         f"下記、資料送付をさせていただきましたのでご報告させていただきます。\n"
@@ -433,7 +435,7 @@ def main():
                         print(f"  → Gmail下書き作成失敗: {e}")
                     print(f"  → 【資料】Gmail下書き作成: {company} / {person} / To:{to_email}")
                     hojin_body = extract_hojin_info(text)
-                    post_shiryo_to_notify(slack, msg, poster_name, hojin_body, status)
+                    post_shiryo_to_notify(slack, msg, poster_name, hojin_body, status, is_security=is_security)
                     post_thread_reply(slack, msg["タイムスタンプ"], status, draft_status, is_security=is_security)
 
                 elif "【アポ" in text:
