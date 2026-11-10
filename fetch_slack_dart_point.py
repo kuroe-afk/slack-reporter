@@ -589,13 +589,15 @@ def process_manual_darts(client, nahooka_client, ss):
 
 
 def fetch_roulette_requests(client, after_ts):
-    """generalチャンネルのスレッドから【ルーレット】を検知
-    親メッセージはafter_tsより古い場合があるため、直近50件を対象にする
+    """ダーツチャンネルのスレッドから【ルーレット】を検知
+    親メッセージはafter_tsより古い場合があるため、90日分遡って取得する
     """
     requests = []
     try:
-        # oldest を指定しない（親メッセージが古くても拾えるよう直近50件を取得）
-        res  = client.conversations_history(channel=DART_CHANNEL, limit=50)
+        # 90日前まで遡る（先月以前の10pt通知へのルーレット返信にも対応）
+        oldest_90d = datetime.datetime.now(tz=ZoneInfo("Asia/Tokyo")) - datetime.timedelta(days=90)
+        res  = client.conversations_history(
+            channel=DART_CHANNEL, limit=200, oldest=str(oldest_90d.timestamp()))
         msgs = res.get("messages", [])
         for msg in msgs:
             parent_ts = msg.get("ts", "")
