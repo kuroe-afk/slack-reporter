@@ -620,7 +620,7 @@ def fetch_roulette_requests(client, after_ts):
 # ── 【アポ】自動🎯返信 ───────────────────────────
 
 def fetch_and_reply_apo(client, nahooka_client, processed_keys, after_ts):
-    """【アポ で始まる投稿を検知してnahookaが🎯返信する
+    """【アポ で始まる投稿を検知してnahooかが🎯返信する
     戻り値: [{"key": ..., "sender": ..., "dart_count": ...}, ...]
     """
     channels = get_bot_channels(client)
@@ -648,12 +648,11 @@ def fetch_and_reply_apo(client, nahooka_client, processed_keys, after_ts):
             key = f"apo_{ch}_{ts}"
             if key in processed_keys:
                 continue
-            # スレッドにnahookaがすでに返信していないか確認（二重投稿防止）
+            # スレッドに🎯を含む返信がすでにあるか確認（user/bot_id両方対応）
             try:
-                nahooka_uid = nahooka_client.auth_test()["user_id"]
                 rep = nahooka_client.conversations_replies(channel=ch, ts=ts, limit=50)
                 already_replied = any(
-                    r.get("user") == nahooka_uid and DART_TEXT in r.get("text", "")
+                    DART_TEXT in r.get("text", "")
                     for r in rep.get("messages", [])
                     if r.get("ts") != ts
                 )
