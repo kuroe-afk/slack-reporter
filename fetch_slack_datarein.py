@@ -325,11 +325,11 @@ def post_shiryo_to_notify(client, msg, poster_name, hojin_body, sheet_status, is
         f"*【スプシ照合】* {check_label}\n"
         f"元スレッド：{permalink}\n"
         f"{'─' * 40}\n"
-        f"{security_header}"
         f"@鈴木健斗 様\n"
         f"お世話になっております。\n"
         f"下記、資料送付をさせていただきましたのでご報告させていただきます。\n"
         f"よろしくお願いいたします。\n\n"
+        f"{security_header}"
         f"{hojin_body}"
     )
     try:
