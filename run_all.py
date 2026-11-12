@@ -27,6 +27,7 @@ import fetch_slack_exkey_ai as reporter_exkey_ai
 import fetch_slack_ireizhons as reporter_ireizhons
 import fetch_slack_tosworks as reporter_tosworks
 import fetch_slack_connect as reporter_connect
+import fetch_slack_leanstack as reporter_leanstack
 import fetch_slack_dart_point as reporter_dart_point
 import fetch_gmail_inbox as reporter_gmail_inbox
 
@@ -49,6 +50,7 @@ CLIENTS = [
     ("ireizhons", reporter_ireizhons),
     ("tosworks", reporter_tosworks),
     ("connect", reporter_connect),
+    ("leanstack", reporter_leanstack),
     ("dart_point", reporter_dart_point),
     ("gmail_inbox", reporter_gmail_inbox),
 ]
