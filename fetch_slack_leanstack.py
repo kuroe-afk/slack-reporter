@@ -34,16 +34,14 @@ HEADER_MENTIONS = (
 )
 
 TEMPLATE_APO = (
-    "【アポ】\n"
-    + HEADER_MENTIONS
+    HEADER_MENTIONS
     + "下記、アポイント獲得の報告でございます。\n"
     "恐れ入りますが、ご対応のほどよろしくお願いいたします。\n\n"
     "{body}"
 )
 
 TEMPLATE_MIKOMI = (
-    "【見込み】\n"
-    + HEADER_MENTIONS
+    HEADER_MENTIONS
     + "下記、アポイント見込みの報告でございます。\n"
     "恐れ入りますが、ご対応のほどよろしくお願いいたします。\n\n"
     "{body}"
