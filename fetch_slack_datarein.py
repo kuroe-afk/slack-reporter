@@ -81,10 +81,10 @@ BODY_SHIRYO_SECURITY = """\
 ご案内させていただきました資料をお送りいたします。
 
 【資料Ⅰ】
-https://x.gd/MbGZR
+https://x.gd/FuxM6
 
 【資料Ⅱ】
-https://x.gd/amf99
+https://x.gd/0bKCz
 
 ご不明な点などございましたら、本メールの返信にて鈴木までお問い合わせください。
 ご確認のほど、よろしくお願いいたします。
