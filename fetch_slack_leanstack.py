@@ -29,7 +29,8 @@ FETCH_LIMIT  = 50
 LAST_TS_FILE = "last_timestamp_leanstack.txt"
 
 HEADER_MENTIONS = (
-    "@吹上由樹 様　@かめ 様\n"
+    "@吹上由樹 様\n"
+    "@かめ 様\n"
     "お世話になっております。\n"
 )
 
