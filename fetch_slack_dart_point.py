@@ -161,18 +161,25 @@ def get_month_data(ws):
 
 
 def get_effective_max_winners(ws):
-    """今月の当選上限 = MAX_WINNERS + 前月の繰越枠（前月の未使用分）"""
-    lm   = last_month()
+    """今月の当選上限 = 累積繰越を考慮した上限
+    過去全月の (MAX_WINNERS - 実績) を合算して今月に加算する
+    """
+    cm   = current_month()
     rows = ws.get_all_values()
-    prev_winners = 0
+    total_budget = 0
+    total_used   = 0
     for row in rows[1:]:
-        if row and row[0] == lm:
-            prev_winners = _int(row[1] if len(row) > 1 else 0)
-            break
-    carryover = max(0, MAX_WINNERS - prev_winners)
+        if not row or not row[0]:
+            continue
+        ym = row[0]
+        if ym >= cm:
+            continue  # 今月分は除外
+        total_budget += MAX_WINNERS
+        total_used   += _int(row[1] if len(row) > 1 else 0)
+    carryover = max(0, total_budget - total_used)
     effective  = MAX_WINNERS + carryover
     if carryover > 0:
-        print(f"  → 前月繰越: {carryover}枠（前月当選{prev_winners}回） → 今月上限: {effective}回")
+        print(f"  → 累積繰越: {carryover}枠（過去合計予算{total_budget}回/実績{total_used}回） → 今月上限: {effective}回")
     return effective
 
 
