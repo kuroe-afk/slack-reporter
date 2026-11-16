@@ -161,25 +161,46 @@ def get_month_data(ws):
 
 
 def get_effective_max_winners(ws):
-    """今月の当選上限 = 累積繰越を考慮した上限
-    過去全月の (MAX_WINNERS - 実績) を合算して今月に加算する
+    """今月の当選上限 = MAX_WINNERS + 前月末時点の繰越残高
+    繰越残高は月をまたぐたびに「前月上限 - 前月実績」を積み上げる。
+    月予算シートのD列（繰越残高）を使って管理する。
     """
     cm   = current_month()
+    lm   = last_month()
     rows = ws.get_all_values()
-    total_budget = 0
-    total_used   = 0
-    for row in rows[1:]:
-        if not row or not row[0]:
-            continue
-        ym = row[0]
-        if ym >= cm:
-            continue  # 今月分は除外
-        total_budget += MAX_WINNERS
-        total_used   += _int(row[1] if len(row) > 1 else 0)
-    carryover = max(0, total_budget - total_used)
-    effective  = MAX_WINNERS + carryover
+
+    # 前月行を探す
+    prev_row = None
+    prev_idx = None
+    for i, row in enumerate(rows[1:], start=2):
+        if row and row[0] == lm:
+            prev_row = row
+            prev_idx = i
+            break
+
+    if prev_row is None:
+        # 前月データなし＝初月なので繰越なし
+        return MAX_WINNERS
+
+    # 前月の繰越残高（D列=index3）が記録済みならそれを使う
+    prev_carried_in  = _int(prev_row[3] if len(prev_row) > 3 else 0)
+    prev_effective   = MAX_WINNERS + prev_carried_in
+    prev_winners     = _int(prev_row[1] if len(prev_row) > 1 else 0)
+    carryover        = max(0, prev_effective - prev_winners)
+
+    # 今月行にD列（繰越残高）を書き込んでおく
+    today_row = None
+    for i, row in enumerate(rows[1:], start=2):
+        if row and row[0] == cm:
+            today_row = i
+            break
+    if today_row:
+        # D列だけ更新（既に書かれていれば上書き）
+        ws.update(f"D{today_row}", [[carryover]], value_input_option="USER_ENTERED")
+
+    effective = MAX_WINNERS + carryover
     if carryover > 0:
-        print(f"  → 累積繰越: {carryover}枠（過去合計予算{total_budget}回/実績{total_used}回） → 今月上限: {effective}回")
+        print(f"  → 繰越: {carryover}枠（前月上限{prev_effective}回/実績{prev_winners}回） → 今月上限: {effective}回")
     return effective
 
 
