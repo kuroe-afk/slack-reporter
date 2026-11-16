@@ -621,8 +621,9 @@ def fetch_roulette_requests(client, after_ts):
 
 # ── 【アポ】自動🎯返信 ───────────────────────────
 
-def fetch_and_reply_apo(client, nahooka_client, processed_keys, after_ts):
+def fetch_and_reply_apo(client, nahooka_client, processed_keys, after_ts, ws_proc):
     """【アポ で始まる投稿を検知してnahooかが🎯返信する
+    返信直後にスプシへキーを保存することで並走実行による二重投稿を防ぐ
     戻り値: [{"key": ..., "sender": ..., "dart_count": ...}, ...]
     """
     channels = get_bot_channels(client)
@@ -660,6 +661,10 @@ def fetch_and_reply_apo(client, nahooka_client, processed_keys, after_ts):
                 )
                 if already_replied:
                     print(f"  → 【アポ】返信済みのためスキップ: {ch}")
+                    # スプシにも記録して次回以降スキップ
+                    if key not in processed_keys:
+                        add_processed_keys(ws_proc, [key])
+                        processed_keys.add(key)
                     continue
             except SlackApiError:
                 pass
@@ -673,6 +678,9 @@ def fetch_and_reply_apo(client, nahooka_client, processed_keys, after_ts):
                     thread_ts=ts,
                 )
                 print(f"  → 【アポ】返信: {ch} / {dart_count}pt / {sender}")
+                # 返信直後に即保存（並走実行による二重投稿防止）
+                add_processed_keys(ws_proc, [key])
+                processed_keys.add(key)
                 results.append({"key": key, "sender": sender, "dart_count": dart_count})
             except SlackApiError as e:
                 print(f"  → 【アポ】返信失敗({ch}): {e.response.get('error')}")
@@ -750,11 +758,11 @@ def main():
 
     # ── 【アポ】自動🎯返信 + ポイント付与 ──
     print("【アポ】投稿を確認中...")
-    apo_results = fetch_and_reply_apo(client, nahooka_client, processed_keys, last_ts)
+    apo_results = fetch_and_reply_apo(client, nahooka_client, processed_keys, last_ts, ws_proc)
     for r in apo_results:
         for _ in range(r["dart_count"]):
             process_point(client, nahooka_client, ss, OKA_USER_ID, r["sender"], is_official=True)
-        new_keys.append(r["key"])
+        # キーは fetch_and_reply_apo 内で即時保存済みのため new_keys には追加しない
 
     # ── 処理済みキーを保存 ──
     if new_keys:
