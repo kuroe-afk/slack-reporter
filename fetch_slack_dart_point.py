@@ -577,16 +577,23 @@ def fetch_staff_dart_mentions(client, processed_keys, after_ts):
                     "key":         key,
                 })
 
+    oldest_90d = str(
+        (datetime.datetime.now(tz=ZoneInfo("Asia/Tokyo")) - datetime.timedelta(days=90)).timestamp()
+    )
+
     for ch in channels:
         try:
-            res  = client.conversations_history(channel=ch, limit=200, oldest=after_ts)
+            # 親メッセージは90日分遡る（古い親へのスレッド返信も拾うため）
+            res  = client.conversations_history(channel=ch, limit=200, oldest=oldest_90d)
             msgs = res.get("messages", [])
         except SlackApiError:
             continue
 
         for msg in msgs:
-            _check_message(msg, ch)
-            # スレッド返信もチェック
+            # 親メッセージ自体がafter_ts以降なら直接チェック
+            if float(msg.get("ts", 0)) >= float(after_ts):
+                _check_message(msg, ch)
+            # スレッド返信はafter_ts以降のみチェック
             if int(msg.get("reply_count", 0)) > 0:
                 try:
                     rep = client.conversations_replies(
