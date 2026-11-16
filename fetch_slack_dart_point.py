@@ -160,6 +160,22 @@ def get_month_data(ws):
     return len(rows) + 1, 0, 0
 
 
+def get_effective_max_winners(ws):
+    """今月の当選上限 = MAX_WINNERS + 前月の繰越枠（前月の未使用分）"""
+    lm   = last_month()
+    rows = ws.get_all_values()
+    prev_winners = 0
+    for row in rows[1:]:
+        if row and row[0] == lm:
+            prev_winners = _int(row[1] if len(row) > 1 else 0)
+            break
+    carryover = max(0, MAX_WINNERS - prev_winners)
+    effective  = MAX_WINNERS + carryover
+    if carryover > 0:
+        print(f"  → 前月繰越: {carryover}枠（前月当選{prev_winners}回） → 今月上限: {effective}回")
+    return effective
+
+
 def update_month_data(ws, row_idx, winners, spins):
     ws.update(f"B{row_idx}:C{row_idx}", [[winners, spins]],
               value_input_option="USER_ENTERED")
@@ -274,8 +290,9 @@ def process_point(client, nahooka_client, ss, from_user_id, to_user_id, is_offic
     # ── 月予算チェック（公式のみ） ──
     if is_official:
         bud_row, winners, spins = get_month_data(ws_bud)
-        if winners >= MAX_WINNERS:
-            print(f"  → 月予算上限到達（{winners}/{MAX_WINNERS}名）")
+        effective_max = get_effective_max_winners(ws_bud)
+        if winners >= effective_max:
+            print(f"  → 月予算上限到達（{winners}/{effective_max}名）")
             return None
         # 付与はするがルーレット当選枠は別管理なので予算チェックのみここで行う
 
@@ -349,11 +366,12 @@ def process_roulette(client, nahooka_client, ss, user_id, thread_ts):
 
     # ── 月データ取得 ──
     bud_row, winners, spins = get_month_data(ws_bud)
+    effective_max = get_effective_max_winners(ws_bud)
 
     # ── 当選確率を計算（先月スピンしたかはスロット全体で判定） ──
     lm = last_month()
     last_spin_month = lm if any(s == lm for s in spin_slots) else ""
-    remaining = MAX_WINNERS - winners
+    remaining = effective_max - winners
     win_prob  = calc_win_prob(remaining, spins, last_spin_month, lwin)
     won       = random.random() < win_prob
 
