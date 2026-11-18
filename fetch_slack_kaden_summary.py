@@ -99,6 +99,10 @@ def scan_channels(client):
             text = msg.get("text", "")
             if KEYWORD not in text:
                 continue
+            # 「Cc @〇〇」が含まれる投稿は報告不要
+            if re.search(r'[Cc][Cc]?\s*<@', text):
+                print(f"  → {ch_name}: Cc付きのためスキップ")
+                continue
             assignees = extract_assignees(text)
             if assignees:
                 results.append({
