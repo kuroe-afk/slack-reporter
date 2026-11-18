@@ -631,6 +631,15 @@ def process_manual_darts(client, nahooka_client, ss):
 
         dart_count = max(1, int(dart_count_raw)) if dart_count_raw.isdigit() else 1
 
+        # 新規ユーザーの場合、ループ前に先に初期化してappend_rowの重複を防ぐ
+        ws_pts = ss.worksheet(SHEET_POINTS)
+        users  = load_users(ws_pts)
+        if to_user not in users:
+            user_name = fetch_user_name(client, to_user)
+            upsert_user(ws_pts, users, to_user, 0, 0, user_name, [], "")
+            print(f"  → 新規ユーザー初期化: {to_user} ({user_name})")
+            time.sleep(2)
+
         print(f"  → 手動ダーツ: {to_user} に {dart_count} 本")
         for _ in range(dart_count):
             process_point(client, nahooka_client, ss, OKA_USER_ID, to_user, is_official=True)
