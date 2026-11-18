@@ -48,20 +48,16 @@ def get_display_name(client, user_id):
 def extract_assignees(text):
     """
     メッセージから架電担当者のユーザーIDを抽出する
-    - KEYWORDより前にあるメンション（先頭）は除外
-    - 「CC」が同行にあるメンション（CC扱い）は除外
+    - 「Cc」が含まれる行のメンションは除外
+    - それ以外の全行のメンションを担当者とする
     """
-    keyword_pos = text.find(KEYWORD)
-    if keyword_pos == -1:
+    if KEYWORD not in text:
         return []
 
-    # KEYWORD以降のテキストのみ対象
-    after_keyword = text[keyword_pos:]
-
     assignees = []
-    for line in after_keyword.splitlines():
+    for line in text.splitlines():
         # CC行はスキップ
-        if re.search(r'[Ｃc][Ｃc]|CC|cc', line, re.IGNORECASE):
+        if re.search(r'[Cc][Cc]?\s*<@', line):
             continue
         for uid in re.findall(r'<@([A-Z0-9]+)>', line):
             if uid not in assignees:
