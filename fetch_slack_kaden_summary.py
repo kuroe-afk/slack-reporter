@@ -13,10 +13,11 @@ from slack_sdk.errors import SlackApiError
 
 load_dotenv()
 
-SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN")
-NOTIFY_CHANNEL  = "C07DE0GFZPV"   # 事務専用チャンネル
-OKA_USER_ID     = "U02KSNGJJ4C"   # 岡菜保
-KEYWORD         = "【本日こちら架電お願いします】"
+SLACK_BOT_TOKEN    = os.getenv("SLACK_BOT_TOKEN")
+NOTIFY_CHANNEL     = "C07DE0GFZPV"   # 事務専用チャンネル
+OKA_USER_ID        = "U02KSNGJJ4C"   # 岡菜保
+KEYWORD            = "【本日こちら架電お願いします】"
+SKIP_CC_NAME       = "水島"           # このCc @〇〇があればメッセージごとスキップ
 
 
 def get_today_oldest():
@@ -99,9 +100,15 @@ def scan_channels(client):
             text = msg.get("text", "")
             if KEYWORD not in text:
                 continue
-            # 「Cc @〇〇」が含まれる投稿は報告不要
-            if re.search(r'[Cc][Cc]?\s*<@', text):
-                print(f"  → {ch_name}: Cc付きのためスキップ")
+            # Cc @〇〇 のメンションを確認し、水島さんがいればメッセージごとスキップ
+            skip = False
+            for cc_uid in re.findall(r'[Cc][Cc]?\s*<@([A-Z0-9]+)>', text):
+                name = get_display_name(client, cc_uid)
+                if SKIP_CC_NAME in name:
+                    print(f"  → {ch_name}: Cc @{name} のためスキップ")
+                    skip = True
+                    break
+            if skip:
                 continue
             assignees = extract_assignees(text)
             if assignees:
