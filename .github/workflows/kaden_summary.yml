@@ -2,7 +2,7 @@ name: 本日架電案件サマリー（平日9時）
 
 on:
   schedule:
-    - cron: '0 0 * * 1-5'  # 平日9:00 JST (= 0:00 UTC)
+    - cron: '15 0 * * 1-5'  # 平日9:15 JST (= 0:15 UTC)
   workflow_dispatch:
 
 jobs:
