@@ -3,6 +3,8 @@ name: 本日架電案件サマリー（平日9時）
 on:
   schedule:
     - cron: '15 0 * * 1-5'  # 平日9:15 JST (= 0:15 UTC)
+    - cron: '30 0 * * 1-5'  # 平日9:30 JST (= 0:30 UTC)
+    - cron: '45 0 * * 1-5'  # 平日9:45 JST (= 0:45 UTC)
   workflow_dispatch:
 
 jobs:
@@ -27,3 +29,11 @@ jobs:
 
       - name: スクリプトを実行
         run: python fetch_slack_kaden_summary.py
+
+      - name: 送信済みフラグを保存
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add last_run_kaden_summary.txt || true
+          git diff --cached --quiet || git commit -m "update last_run_kaden_summary"
+          git push || true

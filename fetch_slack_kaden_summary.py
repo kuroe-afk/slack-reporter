@@ -18,6 +18,24 @@ NOTIFY_CHANNEL     = "C07DE0GFZPV"   # 事務専用チャンネル
 OKA_USER_ID        = "U02KSNGJJ4C"   # 岡菜保
 KEYWORD            = "【本日こちら架電お願いします】"
 SKIP_CC_NAME       = "水島"           # このCc @〇〇があればメッセージごとスキップ
+LAST_RUN_FILE      = "last_run_kaden_summary.txt"
+
+
+def already_ran_today():
+    """今日すでに送信済みかチェック（重複実行防止）"""
+    jst = ZoneInfo("Asia/Tokyo")
+    today = datetime.datetime.now(tz=jst).strftime("%Y-%m-%d")
+    if os.path.exists(LAST_RUN_FILE):
+        with open(LAST_RUN_FILE) as f:
+            return f.read().strip() == today
+    return False
+
+
+def mark_ran_today():
+    jst = ZoneInfo("Asia/Tokyo")
+    today = datetime.datetime.now(tz=jst).strftime("%Y-%m-%d")
+    with open(LAST_RUN_FILE, "w") as f:
+        f.write(today)
 
 
 def get_today_oldest():
@@ -139,6 +157,10 @@ def main():
         print("エラー: SLACK_BOT_TOKEN が未設定です")
         return
 
+    if already_ran_today():
+        print("本日はすでに送信済みのためスキップします。")
+        return
+
     client = WebClient(token=SLACK_BOT_TOKEN)
 
     print("架電案件を収集中...")
@@ -156,6 +178,7 @@ def main():
     try:
         client.chat_postMessage(channel=NOTIFY_CHANNEL, text=summary)
         print("通知完了！")
+        mark_ran_today()
     except SlackApiError as e:
         print(f"通知失敗: {e.response.get('error')}")
 
