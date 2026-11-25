@@ -157,29 +157,19 @@ def get_user_surname(client, user_id):
         return user_id
 
 
-def get_reaction_names(client, ts, thread_ts=None):
-    """指定tsの:woman-gesturing-ok:リアクション者の苗字リストを返す"""
+def get_reply_names(client, parent_ts):
+    """スレッドに返信した人の苗字リスト（岡菜保除く）を返す"""
     try:
-        if thread_ts:
-            # スレッド返信はconversations_repliesで取得
-            res      = client.conversations_replies(channel=SLACK_CHANNEL_ID, ts=thread_ts)
-            messages = [m for m in res.get("messages", []) if m.get("ts") == ts]
-        else:
-            res = client.conversations_history(
-                channel=SLACK_CHANNEL_ID,
-                latest=ts,
-                oldest=str(float(ts) - 1),
-                inclusive=True,
-                limit=1
-            )
-            messages = res.get("messages", [])
-        reactions = messages[0].get("reactions", []) if messages else []
-
+        res = client.conversations_replies(channel=SLACK_CHANNEL_ID, ts=parent_ts)
+        messages = res.get("messages", [])
+        seen = set()
         names = []
-        for r in reactions:
-            if r.get("name", "").startswith(REACTION_NAME):
-                for uid in r.get("users", []):
-                    names.append(get_user_surname(client, uid))
+        for msg in messages[1:]:  # 親投稿はスキップ
+            uid = msg.get("user", "")
+            if not uid or uid == OKA_USER_ID or uid in seen:
+                continue
+            seen.add(uid)
+            names.append(get_user_surname(client, uid))
         return "、".join(names)
     except SlackApiError:
         return ""
@@ -414,16 +404,17 @@ def update_existing_rows(client, ss):
             if not ts:
                 continue
 
-            # F列: リアクション（空または更新が必要な場合）
+            parent_ts = thread_ts or ts
+
+            # F列: スレッド返信者（岡菜保除く）
             current_f = row[5] if len(row) > 5 else ""
-            new_f     = get_reaction_names(client, ts, thread_ts)
+            new_f     = get_reply_names(client, parent_ts)
             if new_f and new_f != current_f:
                 ws.update_cell(i, 6, new_f)
                 print(f"  → F列更新: {tab} 行{i} → {new_f}")
 
             # G列: CSV確認依頼（未チェックの場合のみ確認）
             current_g = row[6] if len(row) > 6 else ""
-            parent_ts = thread_ts or ts
             if current_g not in ("TRUE", "True", True):
                 if has_csv_reply(client, parent_ts):
                     ws.update_cell(i, 7, True)
