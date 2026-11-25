@@ -186,11 +186,11 @@ def get_reaction_names(client, ts, thread_ts=None):
 
 
 def extract_progress_report(text):
-    """【作業経過報告】の対応範囲〜メモ:の内容を抽出"""
-    m = re.search(r'対応範囲[\s　]*[：:]\s*([\s\S]+?)(?=\n*$)', text)
+    """【作業経過報告】以降のテキストを抽出"""
+    m = re.search(r'【作業経過報告】\s*([\s\S]+)', text)
     if not m:
         return ""
-    return m.group(0).strip()
+    return m.group(1).strip()
 
 
 def get_thread_progress_and_done(client, parent_ts):
@@ -429,10 +429,29 @@ def update_existing_rows(client, ss):
                     ws.update_cell(i, 7, True)
                     print(f"  → G列チェック: {tab} 行{i}")
 
+            # 【期限なし】【保留】がスレッドにあればN列に記入
+            current_progress = row[COL_PROGRESS[tab] - 1] if len(row) >= COL_PROGRESS[tab] else ""
+            if current_progress not in ("期限なし", "保留"):
+                try:
+                    res_replies = client.conversations_replies(channel=SLACK_CHANNEL_ID, ts=parent_ts)
+                    for reply_msg in res_replies.get("messages", []):
+                        reply_text = reply_msg.get("text", "")
+                        if "【期限なし】" in reply_text:
+                            ws.update_cell(i, COL_PROGRESS[tab], "期限なし")
+                            print(f"  → N列「期限なし」記入: {tab} 行{i}")
+                            current_progress = "期限なし"
+                            break
+                        if "【保留】" in reply_text:
+                            ws.update_cell(i, COL_PROGRESS[tab], "保留")
+                            print(f"  → N列「保留」記入: {tab} 行{i}")
+                            current_progress = "保留"
+                            break
+                except SlackApiError:
+                    pass
+
             # 作業経過報告・作業終了チェック
             progress, is_done = get_thread_progress_and_done(client, parent_ts)
-            if progress:
-                current_progress = row[COL_PROGRESS[tab] - 1] if len(row) >= COL_PROGRESS[tab] else ""
+            if progress and current_progress not in ("期限なし", "保留"):
                 if progress != current_progress:
                     ws.update_cell(i, COL_PROGRESS[tab], progress)
                     print(f"  → 作業経過報告更新: {tab} 行{i}")
