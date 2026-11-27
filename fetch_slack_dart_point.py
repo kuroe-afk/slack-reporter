@@ -650,13 +650,12 @@ def process_manual_darts(client, nahooka_client, ss):
     print("  → 手動ダーツ確認完了")
 
 
-def fetch_roulette_requests(client, after_ts):
+def fetch_roulette_requests(client, processed_keys):
     """ダーツチャンネルのスレッドから【ルーレット】を検知
-    親メッセージはafter_tsより古い場合があるため、90日分遡って取得する
+    after_tsではなく処理済みキーで重複排除する（古いスレッドへの返信も対応）
     """
     requests = []
     try:
-        # 90日前まで遡る（先月以前の10pt通知へのルーレット返信にも対応）
         oldest_90d = datetime.datetime.now(tz=ZoneInfo("Asia/Tokyo")) - datetime.timedelta(days=90)
         res  = client.conversations_history(
             channel=DART_CHANNEL, limit=200, oldest=str(oldest_90d.timestamp()))
@@ -665,17 +664,20 @@ def fetch_roulette_requests(client, after_ts):
             parent_ts = msg.get("ts", "")
             if int(msg.get("reply_count", 0)) == 0:
                 continue
-            # 返信側は after_ts 以降のみチェック
-            rep = client.conversations_replies(
-                channel=DART_CHANNEL, ts=parent_ts, oldest=after_ts)
+            rep = client.conversations_replies(channel=DART_CHANNEL, ts=parent_ts)
             for reply in rep.get("messages", []):
                 if reply.get("ts") == parent_ts:
                     continue
-                if ROULETTE_KEYWORD in reply.get("text", ""):
-                    requests.append({
-                        "user_id":   reply.get("user", ""),
-                        "thread_ts": parent_ts,
-                    })
+                if ROULETTE_KEYWORD not in reply.get("text", ""):
+                    continue
+                key = f"roulette_{parent_ts}_{reply.get('user', '')}"
+                if key in processed_keys:
+                    continue
+                requests.append({
+                    "user_id":   reply.get("user", ""),
+                    "thread_ts": parent_ts,
+                    "key":       key,
+                })
     except SlackApiError as e:
         print(f"  → ルーレット検知失敗: {e.response.get('error')}")
     return requests
@@ -836,11 +838,15 @@ def main():
 
     # ── ルーレット処理 ──
     print("【ルーレット】依頼を確認中...")
-    roulette_reqs = fetch_roulette_requests(client, last_ts)
+    roulette_reqs = fetch_roulette_requests(client, processed_keys)
     print(f"  → {len(roulette_reqs)} 件")
+    roulette_keys = []
     for req in roulette_reqs:
         if req["user_id"]:
             process_roulette(client, nahooka_client, ss, req["user_id"], req["thread_ts"])
+            roulette_keys.append(req["key"])
+    if roulette_keys:
+        add_processed_keys(ws_proc, roulette_keys)
 
     save_last_ts(fetch_ts)
     print("完了！")
