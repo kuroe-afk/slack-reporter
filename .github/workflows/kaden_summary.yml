@@ -2,9 +2,7 @@ name: 本日架電案件サマリー（平日9時）
 
 on:
   schedule:
-    - cron: '15 0 * * 1-5'  # 平日9:15 JST (= 0:15 UTC)
-    - cron: '30 0 * * 1-5'  # 平日9:30 JST (= 0:30 UTC)
-    - cron: '45 0 * * 1-5'  # 平日9:45 JST (= 0:45 UTC)
+    - cron: '15 0 * * 1-5'  # 平日9:15 JST (= 0:15 UTC) ※cron-job.orgがメイントリガー
   workflow_dispatch:
 
 jobs:
