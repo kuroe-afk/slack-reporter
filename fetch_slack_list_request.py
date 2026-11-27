@@ -166,7 +166,7 @@ def get_reply_names(client, parent_ts):
         names = []
         for msg in messages[1:]:  # 親投稿はスキップ
             uid = msg.get("user", "")
-            if not uid or uid == OKA_USER_ID or uid in seen:
+            if not uid or uid == "U02KSNGJJ4C" or uid in seen:
                 continue
             seen.add(uid)
             names.append(get_user_surname(client, uid))
