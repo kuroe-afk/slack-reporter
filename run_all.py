@@ -7,6 +7,7 @@ GitHub Actionsの実行環境構築(checkout・Python準備・ライブラリイ
 1回にまとめることでコストを削減する。
 """
 
+import time
 import traceback
 
 import fetch_slack as reporter_generic
@@ -57,13 +58,15 @@ CLIENTS = [
 
 
 def main():
-    for name, module in CLIENTS:
+    for i, (name, module) in enumerate(CLIENTS):
         print(f"\n{'=' * 20} {name} {'=' * 20}")
         try:
             module.main()
         except Exception:
             print(f"[{name}] 実行中にエラーが発生しました:")
             traceback.print_exc()
+        if i < len(CLIENTS) - 1:
+            time.sleep(5)
 
 
 if __name__ == "__main__":
