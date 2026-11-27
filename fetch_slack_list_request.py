@@ -471,6 +471,8 @@ def update_existing_rows(client, ss):
             if base_dt is None:
                 base_dt = datetime.datetime.fromtimestamp(float(ts), tz=ZoneInfo("Asia/Tokyo"))
             age = datetime.datetime.now(tz=ZoneInfo("Asia/Tokyo")) - base_dt
+            if current_progress in ("期限なし", "保留"):
+                continue
             if age.days >= REMINDER_DAYS and needs_reminder(tab, row) and not already_reminded(client, parent_ts):
                 send_reminder(client, parent_ts)
 
