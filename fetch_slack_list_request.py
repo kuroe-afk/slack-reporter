@@ -294,7 +294,7 @@ def register_message(client, ss, text, ts, thread_ts=None):
     mgmt_id = make_management_id(ts)
     anken   = extract_field(text, ["案件名"])
     content = re.sub(r'[\r\n]+', ' ', extract_field(text, ["内容"], multiline=True)).strip()
-    f_names = get_reaction_names(client, ts, thread_ts)
+    f_names = get_reply_names(client, parent_ts)
     g_check = has_csv_reply(client, thread_ts or ts)
 
     a_col    = ws.col_values(1)
